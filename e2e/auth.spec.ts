@@ -21,7 +21,7 @@ test('@smoke sign up lands on /picks with nav; logout returns to /login', async 
     await expect(nav(page).getByRole('link', { name })).toBeVisible();
   }
   await expect(page.getByTestId('avatar-button')).toHaveText('D');
-  await expect(page.getByRole('link', { name: /Week \d+, change week/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Choose week|Week \d+, change week/ })).toBeVisible();
 
   // stays logged in: / and /login both go to the app
   await page.goto('/');

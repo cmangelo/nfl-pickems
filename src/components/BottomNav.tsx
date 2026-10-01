@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 const ICONS: Record<string, string> = {
   '/picks': 'M9 11l3 3 8-8M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9',
@@ -12,6 +12,8 @@ const ICONS: Record<string, string> = {
 
 export default function BottomNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
+  const week = useSearchParams().get('week');
+  const withWeek = (href: string) => (week ? `${href}?week=${encodeURIComponent(week)}` : href);
   const tabs = [
     { href: '/picks', label: 'My Picks' },
     { href: '/leaderboard', label: 'Leaderboard' },
@@ -29,7 +31,7 @@ export default function BottomNav({ isAdmin }: { isAdmin: boolean }) {
         return (
           <Link
             key={t.href}
-            href={t.href}
+            href={withWeek(t.href)}
             aria-current={on ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-[3px] text-xs font-semibold ${
               on ? 'text-accent-bright' : 'text-muted'

@@ -1,7 +1,7 @@
 import type { APIRequestContext, BrowserContext, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
-export const BASE_URL = 'http://localhost:3100';
+export const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? 3100}`;
 
 export type Result = 'home' | 'away' | 'tie' | null;
 
@@ -53,6 +53,36 @@ export async function setResult(
 ) {
   const res = await request.post('/api/test/set-result', { data: { gameId, winner, ...scores } });
   expect(res.ok()).toBeTruthy();
+}
+
+/** Seeds one week from the ESPN fixture (2026 weeks 5, 6, 12). Same return shape as seedWeek. */
+export async function importFixtureWeek(request: APIRequestContext, week: number, season = 2026) {
+  const res = await request.post(`/api/test/import-fixture-week?week=${week}&season=${season}`);
+  expect(res.ok(), 'import fixture week').toBeTruthy();
+  return (await res.json()) as { weekId: number; gameIds: number[] };
+}
+
+/** Creates a user (no session). PIN defaults to 1234. */
+export async function createUser(request: APIRequestContext, firstName: string, username: string, pin = '1234') {
+  const res = await request.post('/api/test/create-user', { data: { firstName, username, pin } });
+  expect(res.ok(), `create user ${username}`).toBeTruthy();
+}
+
+/** Submits a complete entry for `username` (asAdmin: works even when the week is locked). `picks` = sides in kickoff order. */
+export async function submitPicksFor(
+  request: APIRequestContext,
+  username: string,
+  weekId: number,
+  picks: ('home' | 'away')[] | Record<number, 'home' | 'away'>,
+  tiebreaker: number,
+) {
+  const res = await request.post('/api/test/submit-picks', { data: { username, weekId, picks, tiebreaker } });
+  expect(res.ok(), `submit picks for ${username}: ${await res.text()}`).toBeTruthy();
+}
+
+export async function setPaid(request: APIRequestContext, username: string, weekId: number, paid = true) {
+  const res = await request.post('/api/test/set-paid', { data: { username, weekId, paid } });
+  expect(res.ok(), `set paid ${username}`).toBeTruthy();
 }
 
 /** UI-driven sign up. Ends on /picks. */
