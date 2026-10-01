@@ -15,3 +15,9 @@ Ambiguities resolved during implementation (simplest reasonable option).
 - **Upset of the week:** final non-tie game with the most counted players wrong; ties broken by highest wrong fraction, then latest kickoff. Names of correct pickers shown only when ≤3.
 - **ESPN failures on refresh-on-view** never throw; a 60 s in-process backoff applies. `clearOverride` resets the game to scheduled for the next sync to refill.
 - **Schedule re-import** updates kickoffs/teams/unlock/lock but never an admin lock override or a manually overridden game's score.
+- **Selected week** is the `?week=<id>` search param on every app route; unknown/future ids fall back to the current week.
+- **Pre-lock "N in"** counts every submitted entry (paid or not) and lists first names only; no "not yet" list. Player drill-down redirects to the leaderboard until the lock.
+- **Games tab "Your pick"** marker comes from the viewer's own entry even if unpaid; the split counts use paid entries only.
+- **Admin score override** always marks the game final (and `manual`, so sync won't overwrite it until "Clear override").
+- **Admins can't demote or remove themselves**, which guarantees at least one admin remains.
+- **Countdown** on My Picks is rendered server-side (doesn't tick live).
