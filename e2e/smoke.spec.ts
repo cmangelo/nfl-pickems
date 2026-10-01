@@ -9,7 +9,7 @@ test('@smoke login page renders with username and PIN fields', async ({ page }) 
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: /pick.?em/i })).toBeVisible();
   await expect(page.getByLabel('Username')).toBeVisible();
-  await expect(page.getByLabel('PIN')).toBeVisible();
+  await expect(page.getByLabel('4-digit PIN')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
 });
 

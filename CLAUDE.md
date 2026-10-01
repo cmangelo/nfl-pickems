@@ -14,7 +14,8 @@ Mobile-first NFL weekly pick'em for a small friend group. Requirements: `REQUIRE
 Next.js 15 (App Router, TypeScript strict, `src/`), Tailwind CSS v4, Drizzle ORM, Postgres. Production: Neon (`@neondatabase/serverless`, neon-http). Tests and local dev: PGlite (offline, embedded Postgres) with the same schema and the same drizzle-kit SQL migrations. Vitest (unit) and Playwright (e2e).
 
 ## Layout
-- `src/app/`: routes (`/` redirects to `/login`; `/api/test/*` are test-only)
+- `src/app/`: routes (`/` redirects to `/picks` if logged in, else `/login`; `(app)/` route group = logged-in shell with header + bottom nav; `/api/test/*` are test-only)
+- `src/lib/auth.ts`: `signUp`, `login` (5 fails -> 15 min lock), `changePin`, `logout`, `getCurrentUser()`, `requireUser()` (redirects /login), `requireAdmin()` (404 for non-admins), `createSession`/`startSession`. Cookie `session` (httpOnly, lax, secure in prod, 1 yr). `src/lib/pin.ts`: scrypt `hashPin`/`verifyPin` (`scrypt$salt$hash`)
 - `src/db/schema.ts`: Drizzle schema. `src/db/index.ts`: driver selection (`getDb`, `resetDb`). `src/db/queries.ts`: query helpers (`seedBase`)
 - `drizzle/`: generated SQL migrations (commit them). After editing the schema run `npm run db:generate`
 - `src/lib/time.ts`: `now()` plus Pacific Time helpers (week unlock/lock, DST-correct)
@@ -33,7 +34,7 @@ Next.js 15 (App Router, TypeScript strict, `src/`), Tailwind CSS v4, Drizzle ORM
 | E2E (mobile + desktop smoke) | `npm run test:e2e` (builds, starts the server on port 3100 with a fresh in-memory DB, TEST_MODE=1, ESPN_MODE=fixture) |
 | Generate migration | `npm run db:generate` |
 | Apply migrations | `npm run db:migrate` |
-| Seed admin (local) | `npm run db:seed` (stop the dev server first) |
+| Seed admin (local) | `npm run db:seed` (stop the dev server first). Env `ADMIN_USERNAME`/`ADMIN_PIN`/`ADMIN_FIRST_NAME`; defaults admin/1234/Admin in dev only, required in production |
 
 Playwright projects: `mobile` (390x844, touch, DPR 3; primary, runs everything) and `desktop` (1280x800; runs only tests with `@smoke` in the title). Workers = 1 because the single server process owns the DB. Call `resetDb(request)` in `beforeEach`.
 
@@ -57,13 +58,10 @@ Routes (all POST except `now`, all 404 unless TEST_MODE=1):
 - `/api/test/reset`: wipe, migrate, seed admin (username `admin`, PIN `1234`, first name `Admin`)
 - `/api/test/seed-week`: `{ season?, weekNumber?, numGames?, results?, tuesday?, lockAt? }` returns `{ weekId, gameIds }`
 - `/api/test/set-result`: `{ gameId, winner: 'home'|'away'|'tie'|null, homeScore?, awayScore? }`
-- `/api/test/login`: `{ username }` creates a `sessions` row and sets the `session` cookie (no PIN check; real auth is Phase 1)
+- `/api/test/login`: `{ username }` creates a `sessions` row and sets the `session` cookie (no PIN check; creates a real session via `createSession`)
 - `/api/test/now`: effective `now()`
 
-`e2e/helpers.ts` wraps them: `resetDb`, `setNow`, `clearNow`, `loginAs`, `seedWeek`, `setResult`.
+`e2e/helpers.ts` wraps them: `resetDb`, `setNow`, `clearNow`, `loginAs`, `seedWeek`, `setResult`, plus UI-driven `signUpViaUi`, `loginViaUi`, `logoutViaUi`. After a failed auth server action the PIN input is cleared; wait for the POST response (see `submit` in `e2e/auth.spec.ts`) before asserting on a repeated error message.
 
 ## Theme
 Dark, teal accent. CSS variables in `src/app/globals.css`: `--bg #0f1115`, `--accent #14b8a6`, `--accent-bright #2dd4bf`, `--correct #22c55e`, `--wrong #ef4444`.
-
-## Known placeholders
-`placeholderPinHash` in `src/db/queries.ts` is a Phase 0 stand-in; Phase 1 auth must replace it with a proper hash.

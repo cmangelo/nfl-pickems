@@ -20,7 +20,7 @@ export async function clearNow(context: BrowserContext) {
   await context.clearCookies({ name: 'x-test-now' });
 }
 
-/** Creates a session row for `username` and sets the `session` cookie on the page/context. */
+/** Creates a real session row for `username` (no PIN check) and sets the `session` cookie on the context. */
 export async function loginAs(target: Page | BrowserContext, username: string) {
   const context: BrowserContext = 'newPage' in target ? target : target.context();
   const res = await context.request.post(`${BASE_URL}/api/test/login`, { data: { username } });
@@ -53,4 +53,29 @@ export async function setResult(
 ) {
   const res = await request.post('/api/test/set-result', { data: { gameId, winner, ...scores } });
   expect(res.ok()).toBeTruthy();
+}
+
+/** UI-driven sign up. Ends on /picks. */
+export async function signUpViaUi(page: Page, firstName: string, username: string, pin: string) {
+  await page.goto('/login');
+  await page.getByRole('tab', { name: 'Sign up' }).click();
+  await page.getByLabel('First name').fill(firstName);
+  await page.getByLabel('Username').fill(username);
+  await page.getByLabel('4-digit PIN').fill(pin);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page).toHaveURL(/\/picks$/);
+}
+
+/** UI-driven login. Does not assert the outcome. */
+export async function loginViaUi(page: Page, username: string, pin: string) {
+  await page.goto('/login');
+  await page.getByLabel('Username').fill(username);
+  await page.getByLabel('4-digit PIN').fill(pin);
+  await page.getByRole('button', { name: 'Log in' }).click();
+}
+
+export async function logoutViaUi(page: Page) {
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await page.getByRole('menuitem', { name: 'Log out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
 }
