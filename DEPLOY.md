@@ -1,0 +1,72 @@
+# Deploying NFL Pick'em (Vercel + Neon)
+
+One-time setup for the owner. Everything runs on free tiers. Nothing here is automated; follow the steps in order.
+
+You need: a GitHub account with this repo, a Vercel account, and Node 22 + npm on your computer (for the one-time database setup commands).
+
+## 1. Create the Vercel project
+
+1. Go to <https://vercel.com/new> and import this GitHub repository.
+2. Framework preset: **Next.js** (auto-detected). Leave build and output settings at their defaults.
+3. Production branch: choose the branch you want live (usually `main`; merge this work there first).
+4. Don't deploy yet if Vercel offers to. If it does deploy, that's fine: the first deploy just won't have a database until step 2.
+
+## 2. Add the Neon Postgres database
+
+1. In the Vercel project, open **Storage** → **Create Database** → **Neon (Serverless Postgres)** → free plan. Pick a region near you (e.g. US West).
+2. Connect it to the project for **Production** (and Preview if you like).
+3. This automatically adds `DATABASE_URL` (and a few other `PG*`/`POSTGRES_*` variables) to the project's environment variables. The app only needs `DATABASE_URL`.
+
+## 3. Set the other environment variables
+
+Vercel project → **Settings** → **Environment Variables**, scope **Production**:
+
+| Name | Value | Why |
+|---|---|---|
+| `CRON_SECRET` | a long random string (e.g. output of `openssl rand -hex 32`) | Vercel sends it to the nightly sync job; the endpoint refuses requests without it. |
+| `ADMIN_USERNAME` | your username, e.g. `dan` | First admin account (used once by the seed step). |
+| `ADMIN_PIN` | 4 digits | First admin's PIN. Change it in the app afterwards. |
+| `ADMIN_FIRST_NAME` | e.g. `Dan` | First admin's name. |
+
+Do **not** set `TEST_MODE`, `DB_DRIVER`, `PGLITE_DIR` or `ESPN_MODE` in production. (`TEST_MODE=1` would enable test-only routes and a clock override.)
+
+## 4. Create the tables, the first admin, and the schedule
+
+Run these once from your computer, in a checkout of the repo:
+
+```bash
+npm install
+# Pull the production env vars (DATABASE_URL etc.) into .env.local
+npx vercel login
+npx vercel link            # pick this project
+npx vercel env pull .env.local --environment=production
+
+npm run db:migrate          # creates the tables in Neon
+npm run db:seed             # creates the first admin from ADMIN_* vars
+npm run db:import-schedule -- --season 2026   # loads the rest of the season from ESPN, starting at the current week
+```
+
+`db:import-schedule` with no `--from` starts at the week containing today (earlier weeks are never loaded). Add `--from N` to start at a specific week.
+
+Delete `.env.local` afterwards if you don't want production credentials on your computer.
+
+## 5. Deploy
+
+Trigger a deploy (push to the production branch, or **Deployments** → **Redeploy**). Open the `*.vercel.app` URL, log in with the admin username and PIN, and change the PIN from the avatar menu.
+
+## 6. Check the nightly sync
+
+`vercel.json` schedules one cron job, `/api/cron/sync`, at **08:00 UTC** daily. Vercel's free plan allows one daily job, and cron times are in UTC with no daylight-saving adjustment, so it runs at **midnight PST** in winter and **1 AM PDT** during daylight time. Both are well after Monday night games end. When someone opens the leaderboard, the app also pulls fresh scores if the last sync was more than 5 minutes ago, so results catch up within minutes anyway.
+
+Check it in Vercel → project → **Settings** → **Cron Jobs**. You can click **Run** to trigger it once by hand.
+
+## Day-to-day
+
+- Share the URL with players; they sign up with first name, username and a 4-digit PIN.
+- Each week, in **Admin → Payments**, mark entries paid. Only paid entries count.
+- **Admin → Games**: "Sync from ESPN now", fix a score if ESPN is wrong, or change a week's lock time. Thanksgiving week already defaults to Thursday 9:00 AM PT.
+- **Admin → Players**: reset a forgotten PIN, make someone an admin.
+
+## Schema changes later
+
+If a future change adds a migration (a new file in `drizzle/`), run `npm run db:migrate` against production again (step 4, with fresh `.env.local`) before or right after deploying.
