@@ -51,7 +51,7 @@ PGlite is single-process: the server process owns the DB. Seed/reset while it ru
 `now()` is async (`await now()`). With `TEST_MODE=1` it honors the `x-test-now` cookie or header (ISO string); otherwise real time. In Playwright: `await setNow(context, '2026-10-07T20:00:00Z')` ("it is Wednesday"), later `setNow(context, '2026-10-09T20:00:00Z')` ("Friday"). `GET /api/test/now` echoes the effective time. PT helpers: `weekTuesday`, `weekUnlockAt` (Tue 00:00 PT), `weekLockAt` (Thu 12:00 PT, or `lockHour=9` for Thanksgiving), `formatPT`.
 
 ## ESPN fixtures
-Use `getEspnClient()`. In fixture mode, `scoreboard-2026-w5.json` is served for season 2026 week 5; other weeks return `[]`. Add fixtures by dropping a file named `scoreboard-{season}-w{week}.json`. Real URL: `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=2026&seasontype=2&week=N`. The parser is unit-tested against the fixture.
+Use `getEspnClient()`. In fixture mode, fixtures exist for 2026 weeks 5 (mixed final/scheduled, one tie), 6 (all scheduled) and 12 (Thanksgiving); other weeks return `[]`. Add fixtures by dropping a file named `scoreboard-{season}-w{week}.json`. Real URL: `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=2026&seasontype=2&week=N`. The parser is unit-tested against the fixture.
 
 ## Test helpers
 Routes (all POST except `now`, all 404 unless TEST_MODE=1):
@@ -65,3 +65,10 @@ Routes (all POST except `now`, all 404 unless TEST_MODE=1):
 
 ## Theme
 Dark, teal accent. CSS variables in `src/app/globals.css`: `--bg #0f1115`, `--accent #14b8a6`, `--accent-bright #2dd4bf`, `--correct #22c55e`, `--wrong #ef4444`.
+
+## Domain logic (src/lib)
+- `weeks.ts`: `weekState` (hidden/open/locked/final), `effectiveLock`, `defaultLockAt` (Thanksgiving = Thu 9 AM PT), `getCurrentWeek`, `getVisibleWeeks`, `setWeekLockOverride`.
+- `schedule.ts`: `importSeason` (upsert weeks/games by espn_id; respects manual overrides). Script: `npm run db:import-schedule -- --season 2026 --from N`.
+- `sync.ts`: `syncScores`, `maybeRefresh` (5-min throttle, never throws), `adminOverrideGame`, `clearOverride`. Cron: `GET /api/cron/sync` with `Authorization: Bearer $CRON_SECRET`.
+- `picks.ts`: `submitPicks` (complete form only; error codes `week_not_found|week_not_open|incomplete|invalid_pick|invalid_tiebreaker`), `getEntry`, `listEntries`.
+- `scoring.ts` (pure): `scoreEntry`, `rankEntries`, `weekSummary`, `tiebreakerGame`. Compute on the fly; no stats table.
