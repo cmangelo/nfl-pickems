@@ -9,3 +9,4 @@ test-results
 .env
 *.tsbuildinfo
 next-env.d.ts
+.claude/worktrees/
