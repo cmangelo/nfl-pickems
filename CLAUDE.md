@@ -4,6 +4,7 @@ Mobile-first NFL weekly pick'em for a small friend group. Requirements: `REQUIRE
 
 ## RULES
 - **Every UI change ships with a Playwright test. Every logic change ships with unit tests.**
+- **Every phase or significant change must update the Playwright tests** (add or adjust specs covering the new or changed behavior) **and rerun the full Playwright suite** (`CI=1 npm run test:e2e`, both projects) before it is considered done. A change is not complete until that suite passes.
 - Before committing, ALL of these must be green: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`.
 - **Never run `playwright install`.** Chromium is pre-installed (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`); `@playwright/test` is pinned to exactly `1.56.1` to match it. If a mismatch ever appears, set `launchOptions.executablePath` to the binary under `/opt/pw-browsers`.
 - App code must NEVER call `new Date()` / `Date.now()` for "current time". Use `now()` from `src/lib/time.ts`.
