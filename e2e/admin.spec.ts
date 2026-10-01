@@ -279,3 +279,25 @@ test('players: make admin gives the Admin tab; remove admin; remove player', asy
   await page.goto(`/admin/payments?week=${weekId}`);
   await expect(page.getByTestId('paid-summary')).toHaveText('0 paid · 0 unpaid');
 });
+
+test('week picker from admin edit-picks returns to the same page with the chosen week', async ({ page, context, request }) => {
+  const wk6 = await seedWeek(request, { weekNumber: 6, numGames: 2, tuesday: '2026-10-06T20:00:00Z' });
+  const wk7 = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: '2026-10-13T20:00:00Z' });
+  await setNow(context, '2026-10-14T20:00:00Z');
+  await loginAs(page, 'admin');
+  await page.goto(`/admin/picks/1?week=${wk7.weekId}`);
+  await expect(page.getByTestId('week-picker')).toContainText('Week 7');
+
+  await page.getByTestId('week-picker').click();
+  await expect(page).toHaveURL(/\/weeks\?week=\d+&from=%2Fadmin%2Fpicks%2F1$/);
+  await page.getByTestId('week-row-6').click();
+  await expect(page).toHaveURL(new RegExp(`/admin/picks/1\\?week=${wk6.weekId}$`));
+  await expect(page.getByTestId('week-picker')).toContainText('Week 6');
+
+  // Same for a player's picks on the leaderboard.
+  await page.goto(`/leaderboard/player/1?week=${wk6.weekId}`);
+  await page.getByTestId('week-picker').click();
+  await expect(page).toHaveURL(/from=%2Fleaderboard%2Fplayer%2F1$/);
+  await page.getByTestId('week-row-7').click();
+  await expect(page).toHaveURL(new RegExp(`/(leaderboard/player/1|leaderboard)\\?week=${wk7.weekId}$`));
+});

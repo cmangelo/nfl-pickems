@@ -6,7 +6,8 @@ import { tiebreakerGame } from '@/lib/scoring';
 import { formatPT, now as getNow } from '@/lib/time';
 import { maybeRefresh } from '@/lib/sync';
 import { effectiveLock } from '@/lib/weeks';
-import { formatCountdown, groupGamesByPtDay } from '@/lib/week-view';
+import { groupGamesByPtDay } from '@/lib/week-view';
+import Countdown from './Countdown';
 import LockedPicks from './LockedPicks';
 import PicksForm from './PicksForm';
 
@@ -47,9 +48,7 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
       <>
         <div className="mb-4 rounded-xl border border-border bg-surface p-3">
           <div data-testid="lock-info" className="font-semibold">Locks {formatPT(lock, "EEE, MMM d · h:mm a 'PT'")}</div>
-          <div data-testid="countdown" className="text-sm text-muted">
-            {formatCountdown(lock.getTime() - t.getTime())} · edit anytime until then
-          </div>
+          <Countdown lockAt={lock.toISOString()} serverNow={t.toISOString()} />
         </div>
         <PicksForm
           key={week.id}

@@ -20,8 +20,15 @@ describe('formatCountdown', () => {
   it('formats days and hours', () => expect(formatCountdown(38 * H + 5 * 60_000)).toBe('1 day 14 hrs left'));
   it('singular units', () => expect(formatCountdown(25 * H)).toBe('1 day 1 hr left'));
   it('hours and minutes', () => expect(formatCountdown(5 * H + 10 * 60_000)).toBe('5 hrs 10 mins left'));
-  it('minutes only', () => expect(formatCountdown(42 * 60_000)).toBe('42 mins left'));
-  it('under a minute', () => expect(formatCountdown(10_000)).toBe('1 min left'));
+  it('exactly one hour is hours and minutes', () => expect(formatCountdown(H)).toBe('1 hr 0 mins left'));
+  it('under an hour is mm:ss', () => {
+    expect(formatCountdown(42 * 60_000 + 7_000)).toBe('42:07 left');
+    expect(formatCountdown(H - 1)).toBe('59:59 left');
+  });
+  it('under a minute', () => {
+    expect(formatCountdown(10_000)).toBe('00:10 left');
+    expect(formatCountdown(500)).toBe('00:00 left');
+  });
   it('locked at or past zero', () => {
     expect(formatCountdown(0)).toBe('Locked');
     expect(formatCountdown(-5)).toBe('Locked');
@@ -68,5 +75,17 @@ describe('safeFrom', () => {
     expect(safeFrom('//evil.com')).toBe('/picks');
     expect(safeFrom('https://evil.com')).toBe('/picks');
     expect(safeFrom(undefined)).toBe('/picks');
+  });
+  it('accepts deeper app paths', () => {
+    expect(safeFrom('/admin/picks/12')).toBe('/admin/picks/12');
+    expect(safeFrom('/leaderboard/player/12')).toBe('/leaderboard/player/12');
+  });
+  it('rejects off-site, malformed and unknown paths', () => {
+    for (const bad of [
+      '//evil.com', '/\\evil.com', '\\evil.com', 'https://evil.com', 'javascript:alert(1)', '/weeks', '/login',
+      '/admin/picks/', '/admin/picks/abc', '/admin/picks/12/x', '/admin/picks/12?x=1', '/leaderboard/player/', '/leaderboard/player/1a',
+      '/picks/12', '/admin/picks/12//evil.com', '/leaderboard/player/12/', '',
+    ])
+      expect(safeFrom(bad), bad).toBe('/picks');
   });
 });

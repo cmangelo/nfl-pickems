@@ -219,3 +219,48 @@ test('header pill is Open for the open week and the picker link keeps the week',
   await expect(page.getByTestId('status-pill')).toHaveAttribute('data-state', 'open');
   await expect(page.getByTestId('week-picker')).toHaveAttribute('href', `/weeks?week=${wk.weekId}&from=%2Fpicks`);
 });
+
+const LOCK = Date.parse('2026-10-08T19:00:00Z'); // Thu Oct 8 12:00 PM PT
+
+test('countdown ticks live under an hour (mm:ss)', async ({ page, context, request }) => {
+  await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  await setNow(context, new Date(LOCK - 120_000).toISOString());
+  await loginAs(page, 'admin');
+  await page.goto('/picks');
+
+  const countdown = page.getByTestId('countdown');
+  await expect(countdown).toHaveText(/^\d\d:\d\d left · edit anytime until then$/);
+  const secs = async () => {
+    const m = /^(\d\d):(\d\d)/.exec((await countdown.textContent()) ?? '');
+    return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+  };
+  const first = await secs();
+  expect(first).toBeLessThanOrEqual(120);
+  expect(first).toBeGreaterThan(100);
+  await page.waitForTimeout(2500);
+  expect(await secs()).toBeLessThan(first);
+});
+
+test('countdown reaches zero: shows locked and refreshes into the read-only page', async ({ page, context, request }) => {
+  await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  await setNow(context, new Date(LOCK - 4_000).toISOString());
+  await loginAs(page, 'admin');
+  await page.goto('/picks');
+  await expect(page.getByTestId('countdown')).toContainText('left');
+  await expect(page.getByRole('button', { name: /submit|update|pick|enter/i })).not.toHaveCount(0);
+
+  // The server clock moves past the lock (the client keeps ticking from its server-time anchor).
+  await setNow(context, new Date(LOCK + 1_000).toISOString());
+  // "Picks are locked" is transient (the refresh swaps in the read-only page), so record it.
+  await page.evaluate(() => {
+    const w = window as unknown as { __sawLocked: boolean };
+    w.__sawLocked = false;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-testid="countdown"]')?.textContent === 'Picks are locked') w.__sawLocked = true;
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  });
+  await expect(page.getByTestId('status-pill')).toHaveText('Live', { timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /submit|update/i })).toHaveCount(0);
+  await expect(page.getByTestId('countdown')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { __sawLocked: boolean }).__sawLocked)).toBe(true);
+});
