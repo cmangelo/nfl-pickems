@@ -82,3 +82,7 @@ Dark, teal accent. CSS variables in `src/app/globals.css`: `--bg #0f1115`, `--ac
 - `sync.ts`: `syncScores`, `maybeRefresh` (5-min throttle, never throws), `adminOverrideGame`, `clearOverride`. Cron: `GET /api/cron/sync` with `Authorization: Bearer $CRON_SECRET`.
 - `picks.ts`: `submitPicks` (complete form only; error codes `week_not_found|week_not_open|incomplete|invalid_pick|invalid_tiebreaker`), `getEntry`, `listEntries`.
 - `scoring.ts` (pure): `scoreEntry`, `rankEntries`, `weekSummary`, `tiebreakerGame`. Compute on the fly; no stats table.
+- `admin.ts`: `setPaid`, `resetPin`, `setAdmin`/`removeUser` (both refuse to act on self), `toPtInputValue`/`fromPtInputValue` (datetime-local in PT <-> UTC), `listUsers`.
+
+## Admin (`src/app/(app)/admin/**`)
+`/admin` redirects to `/admin/payments` (keeps `?week=`); tabs Payments, Games, Players (`AdminTabs`). Players hides the week picker (header shows "Admin"). `admin/layout.tsx` calls `requireAdmin()` and EVERY server action in `admin/actions.ts` calls it again. Games tab: sync button (`importSeason` for the selected week, then forced `syncScores`), lock override, per-game override editor. `/admin/picks/[userId]?week=` reuses `PicksForm` (props `submitAction`, `savedMessage`) and saves via `submitPicks(..., { asAdmin: true })`. In e2e the status pill for a locked, unfinished week reads "Live".

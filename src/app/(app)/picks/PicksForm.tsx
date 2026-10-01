@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import type { Side } from '@/lib/scoring';
-import { submitPicksAction } from './actions';
+import { submitPicksAction, type SubmitState } from './actions';
 
 export interface FormGame {
   id: number;
@@ -26,6 +26,8 @@ export default function PicksForm({
   tiebreakerLabel,
   lockShort,
   hasEntry,
+  submitAction,
+  savedMessage,
 }: {
   weekId: number;
   days: FormDay[];
@@ -34,6 +36,9 @@ export default function PicksForm({
   tiebreakerLabel: string;
   lockShort: string;
   hasEntry: boolean;
+  /** Override the save action (admin editing another user's picks). */
+  submitAction?: (picks: Record<number, Side>, tiebreaker: number) => Promise<SubmitState>;
+  savedMessage?: string;
 }) {
   const allGames = days.flatMap((d) => d.games);
   const [picks, setPicks] = useState<Record<number, Side>>(initialPicks);
@@ -66,7 +71,7 @@ export default function PicksForm({
     setError(null);
     startTransition(async () => {
       try {
-        const res = await submitPicksAction(weekId, picks, Number(tb));
+        const res = await (submitAction ? submitAction(picks, Number(tb)) : submitPicksAction(weekId, picks, Number(tb)));
         if (res.ok) setSaved(true);
         else {
           setSaved(false);
@@ -154,7 +159,7 @@ export default function PicksForm({
       )}
       {saved && (
         <p role="status" className="rounded-lg bg-correct/15 px-3 py-2 text-sm text-[#8ff0bc]">
-          Picks saved. You can change them until {lockShort}.
+          {savedMessage ?? `Picks saved. You can change them until ${lockShort}.`}
         </p>
       )}
 
