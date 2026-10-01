@@ -58,6 +58,15 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 - Entries that are not counted because they are unpaid are listed separately as "not counted".
 - During the week (after the lock), the recap shows picks and splits plus results for the games finished so far, marked "in progress" until every game is final.
 
+### Live leaderboard (while the week is in progress)
+
+- After the lock, the week's page becomes a **live leaderboard** that updates as each game goes final. For example: Thursday night, then the Sunday early games, then the late games, then Sunday night, then Monday.
+- It shows each player's correct picks so far, their **max possible** (correct + games still to play that they could win), and which of their picks are still pending.
+- Ranking uses correct picks so far. Players with the same count share a rank (for example, "T-1st"). The Monday-night tiebreaker only applies once that game is final.
+- Shows "Updated X min ago · N of M games final".
+- Unpaid entries appear greyed out as "not counted" until an admin marks them paid.
+- It turns into the final recap automatically once every game is final.
+
 ## 6. My history
 
 - Each user can see every past week they entered: their picks, whether each was right or wrong, their score, their rank, and their tiebreaker guess.
@@ -78,9 +87,10 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 
 - Source: ESPN's public scoreboard feed (`site.api.espn.com/.../nfl/scoreboard`). Free and **no API key**. It is unofficial, which is why there is an admin override.
 - The remaining season's schedule is loaded at setup.
-- **Automatic sync:** every night at **12:00 AM PT** (Vercel's free plan allows one scheduled job per day). It updates final scores, flexed kickoff times, and the Week 18 matchups once they're announced. That means Thursday's, Sunday's and Monday's results show up overnight.
+- **Automatic sync:** every night at **12:00 AM PT** (Vercel's free plan allows one scheduled job per day). It updates final scores, flexed kickoff times, and the Week 18 matchups once they're announced. This guarantees all results are in by the next morning.
+- **Refresh on view:** when someone opens the leaderboard or recap and the last sync was more than **5 minutes** ago, the app pulls the latest finals from ESPN first. So the board catches up within minutes of a game ending, with no extra cron jobs and no cost. There's also a pull-to-refresh / "Refresh" button, limited to the same 5-minute window.
 - Opening and locking a week happen automatically at the scheduled times. They don't depend on the sync.
-- No live scores during games.
+- No live in-game scores (no score ticker while a game is being played). The leaderboard only counts games once they're **final**.
 
 ## 9. Platform
 
