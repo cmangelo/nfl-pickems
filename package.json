@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "db:import-schedule": "tsx scripts/import-schedule.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

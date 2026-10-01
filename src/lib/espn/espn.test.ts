@@ -49,10 +49,10 @@ describe('parseScoreboard', () => {
 });
 
 describe('FixtureEspnClient', () => {
-  it('serves the fixture for week 5 and empty for unknown weeks', async () => {
+  it('serves the fixture for week 5 and empty for weeks without a fixture', async () => {
     const c = new FixtureEspnClient();
     expect(await c.getScoreboard({ season: 2026, week: 5 })).toHaveLength(raw.events.length);
-    expect(await c.getScoreboard({ season: 2026, week: 6 })).toEqual([]);
+    expect(await c.getScoreboard({ season: 2026, week: 7 })).toEqual([]);
   });
 });
 
