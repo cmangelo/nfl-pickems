@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin players</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1014}
+*{box-sizing:border-box}
+a{color:#FF9A5C}a:hover{color:#FFB585}
+.cond{font-family:'Barlow Condensed',sans-serif}
+.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:8px;height:60px;padding:0 12px 0 14px;border-bottom:1px solid #232733;flex-shrink:0}
+.avatar{margin-left:auto;width:40px;height:40px;border-radius:50%;border:0;background:#262A33;color:#F2F3F5;font:700 16px 'Barlow',sans-serif}
+.nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#12141A;border-top:1px solid #232733;height:64px;flex-shrink:0}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:#9AA1AD;text-decoration:none}
+.nav a.on{color:#FF7A2F}
+.nav svg{width:22px;height:22px}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#1F232C;border-radius:10px;padding:3px}
+.seg a{display:flex;align-items:center;justify-content:center;height:38px;border-radius:8px;font:600 15px 'Barlow',sans-serif;color:#9AA1AD;text-decoration:none}
+.seg a:hover{color:#F2F3F5}
+.seg a.on{background:#353A46;color:#F2F3F5}
+.li{display:flex;align-items:center;gap:8px;min-height:60px;padding:8px 12px;border-bottom:1px solid #232733}
+.sm{height:40px;padding:0 12px;border-radius:8px;border:1.5px solid #2F3440;background:#1F232C;font:600 14px 'Barlow',sans-serif;color:#F2F3F5;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; display: flex; flex-direction: column; background: #0E1014; font-family: 'Barlow', sans-serif; color: #F2F3F5">
+<header class="top">
+<h1 class="cond" style="margin: 0; font-size: 28px; font-weight: 700">Admin</h1>
+<button class="avatar" aria-label="Account menu">D</button>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 12px">
+<nav class="seg" aria-label="Admin sections">
+<a href="AdminPay.dc.html">Payments</a>
+<a href="AdminGames.dc.html">Games</a>
+<a class="on" href="AdminPlayers.dc.html" aria-current="page">Players</a>
+</nav>
+<div style="font-size: 13px; color: #9AA1AD">All players · not tied to a week (the week picker hides here)</div>
+<section style="background: #171A21; border: 1px solid #232733; border-radius: 14px; overflow: hidden">
+<sc-for list="{{users}}" as="u" hint-placeholder-count="12">
+<div class="li">
+<div style="flex-grow: 1">
+<div style="font-size: 17px; font-weight: 600">{{u.n}}<sc-if value="{{u.admin}}" hint-placeholder-val="{{ false }}"> <span style="font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 8px; background: #FF7A2F; color: #1A0F06">ADMIN</span></sc-if></div>
+<div style="font-size: 14px; color: #9AA1AD">@{{u.u}}</div>
+</div>
+<button class="sm">Reset PIN</button>
+<button class="sm" aria-label="More options" style="width: 40px; padding: 0">⋯</button>
+</div>
+</sc-for>
+</section>
+<div style="font-size: 13px; line-height: 1.4; color: #9AA1AD">⋯ menu: make / remove admin, remove player.</div>
+</main>
+<nav class="nav" aria-label="Main">
+<a href="MyPicksLive.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>My Picks</a>
+<a href="Live.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M6 20V11M12 20V4M18 20v-6"></path></svg>Leaderboard</a>
+<a href="Games.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 12h16M12 5v14"></path></svg>Games</a>
+<a class="on" href="AdminPay.dc.html" aria-current="page"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"></path></svg>Admin</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+const USERS = [
+  ['Mike', 'mikeg', true], ['Sarah', 'sarahb'], ['Dan', 'dan_the_man', true], ['Tony', 'tonyp'],
+  ['Jess', 'jessk'], ['Ryan', 'ryno'], ['Kevin', 'kev'], ['Alex', 'alexr'], ['Matt', 'mattyice'],
+  ['Nick', 'nickd'], ['Ben', 'benny'], ['Luis', 'luis_g']
+];
+class Component extends DCLogic {
+  renderVals() { return { users: USERS.map(([n, u, admin]) => ({ n, u, admin: !!admin })) }; }
+}
+</script>
+</body>
+</html>

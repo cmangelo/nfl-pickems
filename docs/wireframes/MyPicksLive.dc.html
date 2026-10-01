@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My Picks in progress</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1014}
+*{box-sizing:border-box}
+a{color:#FF9A5C}a:hover{color:#FFB585}
+.cond{font-family:'Barlow Condensed',sans-serif}
+.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:8px;height:60px;padding:0 12px 0 6px;border-bottom:1px solid #232733;flex-shrink:0}
+.wkbtn{display:flex;align-items:center;gap:2px;height:44px;padding:0 8px;border-radius:10px;color:#F2F3F5;text-decoration:none;font:700 28px 'Barlow Condensed',sans-serif}
+.wkbtn:hover{color:#F2F3F5;background:#1F232C}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+.pill.live{background:#3A1717;color:#FF9C9C}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.avatar{margin-left:auto;width:40px;height:40px;border-radius:50%;border:0;background:#262A33;color:#F2F3F5;font:700 16px 'Barlow',sans-serif}
+.nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#12141A;border-top:1px solid #232733;height:64px;flex-shrink:0}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:#9AA1AD;text-decoration:none}
+.nav a.on{color:#FF7A2F}
+.nav svg{width:22px;height:22px}
+.tile{background:#171A21;border:1px solid #232733;border-radius:12px;padding:10px 12px}
+.tile .v{font:700 30px/1.05 'Barlow Condensed',sans-serif}
+.tile .k{font-size:13px;color:#9AA1AD}
+.tp{flex:1 1 0;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;font:700 19px 'Barlow Condensed',sans-serif;background:#171A21;border:1px solid #232733;color:#8A919D}
+.tp.ok{background:#12301F;border-color:#2C7A50;color:#8FF0BC}
+.tp.no{background:#3A1717;border-color:#8A2E2E;color:#FF9C9C;text-decoration:line-through}
+.tp.pend{background:#3A2416;border-color:#FF7A2F;color:#FFD2B3}
+</style>
+</helmet>
+<div style="width: 390px; height: 1400px; display: flex; flex-direction: column; background: #0E1014; font-family: 'Barlow', sans-serif; color: #F2F3F5">
+<header class="top">
+<a class="wkbtn" href="Weeks.dc.html" aria-label="Week 5, change week">Week 5<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
+<span class="pill live"><span class="dot"></span>Live</span>
+<button class="avatar" aria-label="Account menu">D</button>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 12px">
+<section style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<div class="tile"><div class="v" style="color: #8FF0BC">{{right}}</div><div class="k">Correct</div></div>
+<div class="tile"><div class="v" style="color: #FF9C9C">{{wrong}}</div><div class="k">Wrong</div></div>
+<div class="tile"><div class="v">{{left}}</div><div class="k">To play</div></div>
+</section>
+<div style="font-size: 13px; color: #9AA1AD">Picks locked Thu 12:00 PM · your pick is highlighted</div>
+<sc-for list="{{games}}" as="g" hint-placeholder-count="14">
+<div style="display: flex; align-items: center; gap: 8px; background: #171A21; border: 1px solid #232733; border-radius: 12px; padding: 8px">
+<div style="width: 70px; flex-shrink: 0; font-size: 13px; line-height: 1.25; color: #9AA1AD">{{g.status}}</div>
+<div class="{{g.aCls}}">{{g.a}}<span style="font-size: 15px; opacity: 0.85">{{g.as}}</span></div>
+<div class="{{g.hCls}}">{{g.h}}<span style="font-size: 15px; opacity: 0.85">{{g.hs}}</span></div>
+</div>
+</sc-for>
+<section style="background: #171A21; border: 1px solid #232733; border-radius: 12px; padding: 14px; font-size: 15px; display: flex; justify-content: space-between; align-items: center">
+<span>Tiebreaker · NYJ @ NE total</span>
+<span class="cond" style="font-size: 26px; font-weight: 700">47</span>
+</section>
+</main>
+<nav class="nav" aria-label="Main">
+<a class="on" href="MyPicksLive.dc.html" aria-current="page"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>My Picks</a>
+<a href="Live.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M6 20V11M12 20V4M18 20v-6"></path></svg>Leaderboard</a>
+<a href="Games.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 12h16M12 5v14"></path></svg>Games</a>
+<a href="AdminPay.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"></path></svg>Admin</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1400}}'>
+const G = [
+  { a: 'TB', h: 'ATL', w: 'h', as: 20, hs: 27, t: 'Thu' },
+  { a: 'MIN', h: 'CLE', w: 'a', as: 24, hs: 17 },
+  { a: 'NYG', h: 'NO', w: 'a', as: 23, hs: 20 },
+  { a: 'DAL', h: 'PIT', w: 'h', as: 16, hs: 19 },
+  { a: 'MIA', h: 'CAR', w: 'h', as: 21, hs: 31 },
+  { a: 'HOU', h: 'BAL', w: 'h', as: 13, hs: 28 },
+  { a: 'CIN', h: 'IND', w: 'a', as: 30, hs: 27 },
+  { a: 'LV', h: 'LAC', w: 'h', as: 10, hs: 24 },
+  { a: 'ARI', h: 'SF', w: 'h', as: 17, hs: 34 },
+  { a: 'GB', h: 'LAR', status: 'In progress' },
+  { a: 'BUF', h: 'JAX', status: 'In progress' },
+  { a: 'SEA', h: 'WAS', status: 'In progress' },
+  { a: 'KC', h: 'DET', status: 'Sun 5:20 PM' },
+  { a: 'NYJ', h: 'NE', status: 'Mon 5:15 PM' }
+];
+const FINAL = 9;
+const ME = { c: 7, s: 3 };
+function side(p, i) {
+  if (i < FINAL) {
+    const wrong = ((i * 5 + p.s) % FINAL) < (FINAL - p.c);
+    return wrong ? (G[i].w === 'a' ? 'h' : 'a') : G[i].w;
+  }
+  return (i + p.s) % 2 ? 'h' : 'a';
+}
+class Component extends DCLogic {
+  renderVals() {
+    const games = G.map((g, i) => {
+      const final = i < FINAL;
+      const mine = side(ME, i);
+      const res = !final ? 'tp pend' : (mine === g.w ? 'tp ok' : 'tp no');
+      return {
+        a: g.a, h: g.h,
+        as: final ? ' ' + g.as : '', hs: final ? ' ' + g.hs : '',
+        status: final ? 'Final' : g.status,
+        aCls: mine === 'a' ? res : 'tp',
+        hCls: mine === 'h' ? res : 'tp'
+      };
+    });
+    return { games, right: ME.c, wrong: FINAL - ME.c, left: G.length - FINAL };
+  }
+}
+</script>
+</body>
+</html>

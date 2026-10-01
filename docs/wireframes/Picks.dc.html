@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My Picks</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1014}
+*{box-sizing:border-box}
+a{color:#FF9A5C}a:hover{color:#FFB585}
+.cond{font-family:'Barlow Condensed',sans-serif}
+.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:8px;height:60px;padding:0 12px 0 6px;border-bottom:1px solid #232733;flex-shrink:0}
+.wkbtn{display:flex;align-items:center;gap:2px;height:44px;padding:0 8px;border-radius:10px;color:#F2F3F5;text-decoration:none;font:700 28px 'Barlow Condensed',sans-serif}
+.wkbtn:hover{color:#F2F3F5;background:#1F232C}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+.pill.open{background:#3A2416;color:#FFB585}
+.avatar{margin-left:auto;width:40px;height:40px;border-radius:50%;border:0;background:#262A33;color:#F2F3F5;font:700 16px 'Barlow',sans-serif}
+.nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#12141A;border-top:1px solid #232733;height:64px;flex-shrink:0}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:#9AA1AD;text-decoration:none}
+.nav a.on{color:#FF7A2F}
+.nav svg{width:22px;height:22px}
+.team{flex:1 1 0;height:50px;border:1.5px solid #2F3440;border-radius:10px;background:#1F232C;font:700 21px 'Barlow Condensed',sans-serif;color:#F2F3F5;cursor:pointer}
+.team.sel{background:#FF7A2F;border-color:#FF7A2F;color:#1A0F06}
+.submit{width:100%;height:54px;border:0;border-radius:12px;background:#FF7A2F;color:#1A0F06;font:700 18px 'Barlow',sans-serif;cursor:pointer}
+.submit.off{background:#262A33;color:#9AA1AD;cursor:not-allowed}
+</style>
+</helmet>
+<div style="width: 390px; height: 1560px; display: flex; flex-direction: column; background: #0E1014; font-family: 'Barlow', sans-serif; color: #F2F3F5">
+<header class="top">
+<a class="wkbtn" href="Weeks.dc.html" aria-label="Week 5, change week">Week 5<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
+<span class="pill open">Open</span>
+<button class="avatar" aria-label="Account menu">D</button>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #3A2416; color: #FFD2B3">
+<svg viewBox="0 0 24 24" width="22" height="22" class="ico" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+<div style="font-size: 15px; line-height: 1.3"><strong style="color: #FFFFFF">Locks Thu, Oct 8 · 12:00 PM PT</strong><br>1 day 14 hrs left · edit anytime until then</div>
+</div>
+<div>
+<div style="display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 6px"><strong>{{count}} of 14 picked</strong><span style="color: #9AA1AD">{{remaining}}</span></div>
+<div style="height: 8px; background: #262A33; border-radius: 4px; overflow: hidden"><div style="{{barStyle}}"></div></div>
+</div>
+<sc-for list="{{days}}" as="day" hint-placeholder-count="3">
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 class="cond" style="margin: 6px 0 0; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: #9AA1AD">{{day.label}}</h2>
+<sc-for list="{{day.games}}" as="g" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 8px; background: #171A21; border: 1px solid #232733; border-radius: 12px; padding: 8px">
+<div style="width: 62px; flex-shrink: 0; font-size: 13px; line-height: 1.25; color: #9AA1AD">{{g.time}}<sc-if value="{{g.hasTag}}" hint-placeholder-val="{{ false }}"><br><strong style="color: #F2F3F5">{{g.tag}}</strong></sc-if></div>
+<button class="{{g.awayCls}}" aria-pressed="{{g.awaySel}}" onClick="{{g.pickAway}}">{{g.away}}</button>
+<span style="font-size: 14px; color: #9AA1AD">@</span>
+<button class="{{g.homeCls}}" aria-pressed="{{g.homeSel}}" onClick="{{g.pickHome}}">{{g.home}}</button>
+</div>
+</sc-for>
+</section>
+</sc-for>
+<section style="background: #171A21; border: 1px solid #232733; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<h2 class="cond" style="margin: 0; font-size: 22px; font-weight: 700">Tiebreaker</h2>
+<label for="tb" style="font-size: 15px; line-height: 1.35; color: #D5D8DE">Total points scored in <strong style="color: #FFFFFF">NYJ @ NE</strong> (Mon 5:15 PM)</label>
+<input id="tb" type="text" inputmode="numeric" maxlength="3" placeholder="e.g. 44" value="{{tb}}" onChange="{{onTb}}" style="height: 56px; width: 140px; border: 1.5px solid #2F3440; border-radius: 10px; padding: 0 14px; background: #0E1014; font: 700 26px 'Barlow Condensed', sans-serif; color: #F2F3F5">
+<div style="font-size: 13px; color: #9AA1AD">Closest guess wins if players tie on correct picks.</div>
+</section>
+<sc-if value="{{saved}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #12301F; color: #8FF0BC; font-size: 15px">
+<svg viewBox="0 0 24 24" width="22" height="22" class="ico" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span><strong>Picks saved.</strong> You can change them until Thu 12:00 PM PT.</span>
+</div>
+</sc-if>
+<button class="{{submitCls}}" disabled="{{notComplete}}" onClick="{{submit}}">{{submitLabel}}</button>
+</main>
+<nav class="nav" aria-label="Main">
+<a class="on" href="Picks.dc.html" aria-current="page"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>My Picks</a>
+<a href="PreLock.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M6 20V11M12 20V4M18 20v-6"></path></svg>Leaderboard</a>
+<a href="PreLock.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 12h16M12 5v14"></path></svg>Games</a>
+<a href="AdminPay.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"></path></svg>Admin</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1560}}'>
+const GAMES = [
+  { id: 1, day: 'Thursday', time: '5:15 PM', away: 'TB', home: 'ATL', tag: 'TNF' },
+  { id: 2, day: 'Sunday', time: '6:30 AM', away: 'MIN', home: 'CLE', tag: 'London' },
+  { id: 3, day: 'Sunday', time: '10:00 AM', away: 'NYG', home: 'NO' },
+  { id: 4, day: 'Sunday', time: '10:00 AM', away: 'DAL', home: 'PIT' },
+  { id: 5, day: 'Sunday', time: '10:00 AM', away: 'MIA', home: 'CAR' },
+  { id: 6, day: 'Sunday', time: '10:00 AM', away: 'HOU', home: 'BAL' },
+  { id: 7, day: 'Sunday', time: '10:00 AM', away: 'CIN', home: 'IND' },
+  { id: 8, day: 'Sunday', time: '1:05 PM', away: 'LV', home: 'LAC' },
+  { id: 9, day: 'Sunday', time: '1:25 PM', away: 'ARI', home: 'SF' },
+  { id: 10, day: 'Sunday', time: '1:25 PM', away: 'GB', home: 'LAR' },
+  { id: 11, day: 'Sunday', time: '1:25 PM', away: 'BUF', home: 'JAX' },
+  { id: 12, day: 'Sunday', time: '1:25 PM', away: 'SEA', home: 'WAS' },
+  { id: 13, day: 'Sunday', time: '5:20 PM', away: 'KC', home: 'DET', tag: 'SNF' },
+  { id: 14, day: 'Monday', time: '5:15 PM', away: 'NYJ', home: 'NE', tag: 'MNF' }
+];
+const START = { 1: 'home', 2: 'away', 3: 'home', 4: 'away', 5: 'away', 6: 'home', 7: 'away', 8: 'home', 9: 'home', 10: 'away', 11: 'away' };
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { picks: Object.assign({}, START), tb: '', saved: false }; }
+  renderVals() {
+    const { picks, tb, saved } = this.state;
+    const pick = (id, side) => () => this.setState({ picks: Object.assign({}, picks, { [id]: side }), saved: false });
+    const days = ['Thursday', 'Sunday', 'Monday'].map((d) => ({
+      label: d,
+      games: GAMES.filter((g) => g.day === d).map((g) => ({
+        ...g,
+        tag: g.tag || '',
+        hasTag: !!g.tag,
+        awaySel: picks[g.id] === 'away',
+        homeSel: picks[g.id] === 'home',
+        awayCls: picks[g.id] === 'away' ? 'team sel' : 'team',
+        homeCls: picks[g.id] === 'home' ? 'team sel' : 'team',
+        pickAway: pick(g.id, 'away'),
+        pickHome: pick(g.id, 'home')
+      }))
+    }));
+    const count = Object.keys(picks).length;
+    const tbOk = tb !== '';
+    const complete = count === GAMES.length && tbOk;
+    const left = GAMES.length - count;
+    const parts = [];
+    if (left) parts.push(left + (left === 1 ? ' game' : ' games') + ' left');
+    if (!tbOk) parts.push('tiebreaker needed');
+    return {
+      days,
+      count,
+      tb,
+      saved,
+      remaining: complete ? 'Ready to submit' : parts.join(' · '),
+      barStyle: 'height: 100%; border-radius: 4px; background: #FF7A2F; width: ' + Math.round((count / GAMES.length) * 100) + '%',
+      onTb: (e) => this.setState({ tb: e.target.value.replace(/\D/g, '').slice(0, 3), saved: false }),
+      notComplete: !complete,
+      submitCls: complete ? 'submit' : 'submit off',
+      submitLabel: complete ? (saved ? 'Saved ✓' : 'Submit picks') : 'Pick all 14 games + tiebreaker',
+      submit: () => { if (complete) this.setState({ saved: true }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

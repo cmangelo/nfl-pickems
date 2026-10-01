@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Log in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1014}
+*{box-sizing:border-box}
+a{color:#FF9A5C}a:hover{color:#FFB585}
+.cond{font-family:'Barlow Condensed',sans-serif}
+.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:#1F232C;border-radius:10px;padding:3px}
+.seg button{height:40px;border:0;border-radius:8px;background:transparent;font:600 16px 'Barlow',sans-serif;color:#9AA1AD;cursor:pointer}
+.seg button.on{background:#353A46;color:#F2F3F5}
+.lbl{display:block;font-size:14px;font-weight:600;margin-bottom:6px;color:#D5D8DE}
+.inp{width:100%;height:52px;border:1.5px solid #2F3440;border-radius:10px;padding:0 14px;font:500 18px 'Barlow',sans-serif;background:#171A21;color:#F2F3F5}
+.inp::placeholder{color:#6B7280}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:12px;background:#FF7A2F;color:#1A0F06;font:700 18px 'Barlow',sans-serif;text-decoration:none}
+.btn:hover{color:#1A0F06;background:#FF8E4D}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: #0E1014; font-family: 'Barlow', sans-serif; color: #F2F3F5">
+<div style="padding: 72px 24px 32px">
+<div style="width: 56px; height: 56px; border-radius: 16px; background: #FF7A2F; display: flex; align-items: center; justify-content: center; color: #1A0F06">
+<svg viewBox="0 0 24 24" width="30" height="30" class="ico" aria-hidden="true"><ellipse cx="12" cy="12" rx="10" ry="6" transform="rotate(-40 12 12)"></ellipse><path d="M9 15l6-6M10 11.5l2.5 2.5M11.5 10l2.5 2.5"></path></svg>
+</div>
+<h1 class="cond" style="margin: 18px 0 6px; font-size: 46px; font-weight: 700; line-height: 1">Pick'em</h1>
+<p style="margin: 0; font-size: 17px; line-height: 1.4; color: #9AA1AD">Pick every winner. Closest Monday-night guess breaks ties.</p>
+</div>
+<div style="flex-grow: 1; padding: 8px 24px 24px; display: flex; flex-direction: column; gap: 18px">
+<div class="seg" role="group" aria-label="Log in or sign up">
+<button class="{{loginCls}}" onClick="{{setLogin}}">Log in</button>
+<button class="{{signupCls}}" onClick="{{setSignup}}">Sign up</button>
+</div>
+<sc-if value="{{isSignup}}" hint-placeholder-val="{{ false }}">
+<div>
+<label class="lbl" for="fn">First name</label>
+<input class="inp" id="fn" type="text" autocomplete="given-name" placeholder="Dan">
+<div style="font-size: 13px; color: #9AA1AD; margin-top: 6px">So the admins know who's who when collecting money.</div>
+</div>
+</sc-if>
+<div>
+<label class="lbl" for="un">Username</label>
+<input class="inp" id="un" type="text" autocapitalize="none" autocomplete="username" placeholder="dan_the_man">
+</div>
+<div>
+<label class="lbl" for="pin">4-digit PIN</label>
+<input class="inp" id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••" style="letter-spacing: 0.4em">
+</div>
+<a class="btn" href="Picks.dc.html">{{cta}}</a>
+<p style="margin: 0; text-align: center; font-size: 14px; color: #9AA1AD">Forgot your PIN? Ask an admin to reset it.</p>
+<p style="margin: auto 0 0; text-align: center; font-size: 13px; color: #9AA1AD">You'll stay logged in on this phone.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { mode: 'login' }; }
+  renderVals() {
+    const s = this.state.mode === 'signup';
+    return {
+      isSignup: s,
+      loginCls: s ? '' : 'on',
+      signupCls: s ? 'on' : '',
+      setLogin: () => this.setState({ mode: 'login' }),
+      setSignup: () => this.setState({ mode: 'signup' }),
+      cta: s ? 'Create account' : 'Log in'
+    };
+  }
+}
+</script>
+</body>
+</html>

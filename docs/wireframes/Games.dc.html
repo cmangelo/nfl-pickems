@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Games in progress</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1014}
+*{box-sizing:border-box}
+a{color:#FF9A5C}a:hover{color:#FFB585}
+.cond{font-family:'Barlow Condensed',sans-serif}
+.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:8px;height:60px;padding:0 12px 0 6px;border-bottom:1px solid #232733;flex-shrink:0}
+.wkbtn{display:flex;align-items:center;gap:2px;height:44px;padding:0 8px;border-radius:10px;color:#F2F3F5;text-decoration:none;font:700 28px 'Barlow Condensed',sans-serif}
+.wkbtn:hover{color:#F2F3F5;background:#1F232C}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+.pill.live{background:#3A1717;color:#FF9C9C}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.avatar{margin-left:auto;width:40px;height:40px;border-radius:50%;border:0;background:#262A33;color:#F2F3F5;font:700 16px 'Barlow',sans-serif}
+.nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#12141A;border-top:1px solid #232733;height:64px;flex-shrink:0}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:#9AA1AD;text-decoration:none}
+.nav a.on{color:#FF7A2F}
+.nav svg{width:22px;height:22px}
+</style>
+</helmet>
+<div style="width: 390px; height: 1620px; display: flex; flex-direction: column; background: #0E1014; font-family: 'Barlow', sans-serif; color: #F2F3F5">
+<header class="top">
+<a class="wkbtn" href="Weeks.dc.html" aria-label="Week 5, change week">Week 5<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
+<span class="pill live"><span class="dot"></span>Live</span>
+<button class="avatar" aria-label="Account menu">D</button>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; color: #9AA1AD; margin-bottom: 4px">Who picked what · 9 counted players</div>
+<sc-for list="{{games}}" as="g" hint-placeholder-count="14">
+<div style="background: #171A21; border: 1px solid #232733; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span class="cond" style="{{g.aStyle}}">{{g.a}} {{g.as}}</span>
+<span style="color: #9AA1AD; font-size: 14px">@</span>
+<span class="cond" style="{{g.hStyle}}">{{g.h}} {{g.hs}}</span>
+<span style="margin-left: auto; font-size: 13px; font-weight: 600; color: #9AA1AD">{{g.status}}</span>
+</div>
+<div style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px"><div style="{{g.aBar}}"></div><div style="{{g.hBar}}"></div></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px; line-height: 1.4">
+<div><strong>{{g.aCount}} · {{g.a}}</strong><br><span style="color: #9AA1AD">{{g.aNames}}</span></div>
+<div style="text-align: right"><strong>{{g.hCount}} · {{g.h}}</strong><br><span style="color: #9AA1AD">{{g.hNames}}</span></div>
+</div>
+</div>
+</sc-for>
+</main>
+<nav class="nav" aria-label="Main">
+<a href="MyPicksLive.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>My Picks</a>
+<a href="Live.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M6 20V11M12 20V4M18 20v-6"></path></svg>Leaderboard</a>
+<a class="on" href="Games.dc.html" aria-current="page"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 12h16M12 5v14"></path></svg>Games</a>
+<a href="AdminPay.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"></path></svg>Admin</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1620}}'>
+const G = [
+  { a: 'TB', h: 'ATL', w: 'h', as: 20, hs: 27 },
+  { a: 'MIN', h: 'CLE', w: 'a', as: 24, hs: 17 },
+  { a: 'NYG', h: 'NO', w: 'a', as: 23, hs: 20 },
+  { a: 'DAL', h: 'PIT', w: 'h', as: 16, hs: 19 },
+  { a: 'MIA', h: 'CAR', w: 'h', as: 21, hs: 31 },
+  { a: 'HOU', h: 'BAL', w: 'h', as: 13, hs: 28 },
+  { a: 'CIN', h: 'IND', w: 'a', as: 30, hs: 27 },
+  { a: 'LV', h: 'LAC', w: 'h', as: 10, hs: 24 },
+  { a: 'ARI', h: 'SF', w: 'h', as: 17, hs: 34 },
+  { a: 'GB', h: 'LAR', status: 'In progress' },
+  { a: 'BUF', h: 'JAX', status: 'In progress' },
+  { a: 'SEA', h: 'WAS', status: 'In progress' },
+  { a: 'KC', h: 'DET', status: 'Sun 5:20 PM' },
+  { a: 'NYJ', h: 'NE', status: 'Mon 5:15 PM' }
+];
+const FINAL = 9;
+const P = [
+  { n: 'Mike', c: 8, s: 1 }, { n: 'Sarah', c: 8, s: 2 }, { n: 'You', c: 7, s: 3 }, { n: 'Tony', c: 7, s: 4 },
+  { n: 'Jess', c: 7, s: 5 }, { n: 'Ryan', c: 6, s: 6 }, { n: 'Kevin', c: 6, s: 7 }, { n: 'Alex', c: 5, s: 8 }, { n: 'Matt', c: 4, s: 0 }
+];
+function side(p, i) {
+  if (i < FINAL) {
+    const wrong = ((i * 5 + p.s) % FINAL) < (FINAL - p.c);
+    return wrong ? (G[i].w === 'a' ? 'h' : 'a') : G[i].w;
+  }
+  return (i + p.s) % 2 ? 'h' : 'a';
+}
+const BASE = 'font-size: 21px; ';
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      games: G.map((g, i) => {
+        const final = i < FINAL;
+        const aP = P.filter((p) => side(p, i) === 'a').map((p) => p.n);
+        const hP = P.filter((p) => side(p, i) === 'h').map((p) => p.n);
+        const aWin = final && g.w === 'a';
+        const hWin = final && g.w === 'h';
+        const bar = (n, win) => 'height: 100%; flex-grow: ' + n + '; background: ' + (final ? (win ? '#FF7A2F' : '#3A3F4B') : '#6B7280');
+        const team = (win) => BASE + (final && !win ? 'font-weight: 600; color: #8A919D' : 'font-weight: 700; color: #F2F3F5');
+        return {
+          a: g.a, h: g.h, as: final ? g.as : '', hs: final ? g.hs : '',
+          status: final ? 'Final' : g.status,
+          aStyle: team(aWin), hStyle: team(hWin),
+          aBar: bar(aP.length, aWin), hBar: bar(hP.length, hWin),
+          aCount: aP.length, hCount: hP.length,
+          aNames: aP.join(', ') || '—', hNames: hP.join(', ') || '—'
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

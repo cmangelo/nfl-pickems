@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Choose week</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1014}
+*{box-sizing:border-box}
+a{color:#FF9A5C}a:hover{color:#FFB585}
+.cond{font-family:'Barlow Condensed',sans-serif}
+.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:8px;height:60px;padding:0 12px 0 6px;border-bottom:1px solid #232733;flex-shrink:0}
+.wkbtn{display:flex;align-items:center;gap:2px;height:44px;padding:0 8px;border-radius:10px;color:#F2F3F5;text-decoration:none;font:700 28px 'Barlow Condensed',sans-serif}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+.pill.live{background:#3A1717;color:#FF9C9C}
+.pill.final{background:#262A33;color:#C9CDD4}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.avatar{margin-left:auto;width:40px;height:40px;border-radius:50%;border:0;background:#262A33;color:#F2F3F5;font:700 16px 'Barlow',sans-serif}
+.wrow{display:flex;align-items:center;gap:12px;min-height:72px;padding:10px 16px;border-bottom:1px solid #232733;color:#F2F3F5;text-decoration:none}
+.wrow:hover{color:#F2F3F5;background:#1F232C}
+.wrow.cur{background:#2A1D14}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; display: flex; flex-direction: column; background: #0E1014; font-family: 'Barlow', sans-serif; color: #F2F3F5; overflow: hidden">
+<header class="top">
+<span class="wkbtn">Week 5<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true"><path d="M18 15l-6-6-6 6"></path></svg></span>
+<span class="pill live"><span class="dot"></span>Live</span>
+<button class="avatar" aria-label="Account menu">D</button>
+</header>
+<div style="position: absolute; left: 0; right: 0; top: 60px; bottom: 0; background: rgba(0, 0, 0, 0.6)"></div>
+<section role="dialog" aria-label="Choose week" style="position: absolute; left: 0; right: 0; bottom: 0; background: #171A21; border-radius: 20px 20px 0 0; padding-bottom: 24px">
+<div style="width: 40px; height: 4px; border-radius: 2px; background: #4A505C; margin: 10px auto 6px"></div>
+<div style="display: flex; align-items: center; padding: 4px 8px 8px 16px">
+<h2 class="cond" style="margin: 0; font-size: 24px; font-weight: 700; flex-grow: 1">Choose week</h2>
+<a href="Live.dc.html" aria-label="Close" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #C9CDD4"><svg viewBox="0 0 24 24" width="22" height="22" class="ico"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+</div>
+<a class="wrow cur" href="Live.dc.html" aria-current="true">
+<div style="flex-grow: 1"><div class="cond" style="font-size: 22px; font-weight: 700">Week 5 <span class="pill live" style="margin-left: 6px; vertical-align: 3px"><span class="dot"></span>Live</span></div><div style="font-size: 14px; color: #9AA1AD">You: 7 so far · T-3rd</div></div>
+<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true" style="color: #FF7A2F"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</a>
+<a class="wrow" href="Final.dc.html">
+<div style="flex-grow: 1"><div class="cond" style="font-size: 22px; font-weight: 700">Week 4</div><div style="font-size: 14px; color: #9AA1AD">You: 10/14 · 4th of 9 · Winner: Jess</div></div>
+<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true" style="color: #9AA1AD"><path d="M9 6l6 6-6 6"></path></svg>
+</a>
+<a class="wrow" href="Final.dc.html">
+<div style="flex-grow: 1"><div class="cond" style="font-size: 22px; font-weight: 700">Week 3 <span style="font: 700 12px 'Barlow', sans-serif; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 999px; background: #FF7A2F; color: #1A0F06; margin-left: 6px; vertical-align: 3px">YOU WON</span></div><div style="font-size: 14px; color: #9AA1AD">You: 12/14 · 1st of 10</div></div>
+<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true" style="color: #9AA1AD"><path d="M9 6l6 6-6 6"></path></svg>
+</a>
+<a class="wrow" href="Final.dc.html">
+<div style="flex-grow: 1"><div class="cond" style="font-size: 22px; font-weight: 700">Week 2</div><div style="font-size: 14px; color: #9AA1AD">You: 8/14 · 7th of 10 · Winner: Mike</div></div>
+<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true" style="color: #9AA1AD"><path d="M9 6l6 6-6 6"></path></svg>
+</a>
+<div style="padding: 14px 16px 0; font-size: 13px; color: #9AA1AD">Next week unlocks Tuesday at 12:00 AM PT.</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

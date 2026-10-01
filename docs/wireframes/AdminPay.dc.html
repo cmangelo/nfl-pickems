@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin payments</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1014}
+*{box-sizing:border-box}
+a{color:#FF9A5C}a:hover{color:#FFB585}
+.cond{font-family:'Barlow Condensed',sans-serif}
+.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:8px;height:60px;padding:0 12px 0 6px;border-bottom:1px solid #232733;flex-shrink:0}
+.wkbtn{display:flex;align-items:center;gap:2px;height:44px;padding:0 8px;border-radius:10px;color:#F2F3F5;text-decoration:none;font:700 28px 'Barlow Condensed',sans-serif}
+.wkbtn:hover{color:#F2F3F5;background:#1F232C}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+.pill.live{background:#3A1717;color:#FF9C9C}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.avatar{margin-left:auto;width:40px;height:40px;border-radius:50%;border:0;background:#262A33;color:#F2F3F5;font:700 16px 'Barlow',sans-serif}
+.nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#12141A;border-top:1px solid #232733;height:64px;flex-shrink:0}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:#9AA1AD;text-decoration:none}
+.nav a.on{color:#FF7A2F}
+.nav svg{width:22px;height:22px}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#1F232C;border-radius:10px;padding:3px}
+.seg a{display:flex;align-items:center;justify-content:center;height:38px;border-radius:8px;font:600 15px 'Barlow',sans-serif;color:#9AA1AD;text-decoration:none}
+.seg a:hover{color:#F2F3F5}
+.seg a.on{background:#353A46;color:#F2F3F5}
+.li{display:flex;align-items:center;gap:10px;min-height:60px;padding:8px 12px;border-bottom:1px solid #232733}
+.pay{min-width:92px;height:40px;border-radius:20px;font:700 14px 'Barlow',sans-serif;cursor:pointer}
+.pay.yes{background:#12301F;border:1.5px solid #2C7A50;color:#8FF0BC}
+.pay.no{background:transparent;border:1.5px solid #FF7A2F;color:#FFB585}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; display: flex; flex-direction: column; background: #0E1014; font-family: 'Barlow', sans-serif; color: #F2F3F5">
+<header class="top">
+<a class="wkbtn" href="Weeks.dc.html" aria-label="Week 5, change week">Week 5<svg viewBox="0 0 24 24" width="20" height="20" class="ico" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
+<span class="pill live"><span class="dot"></span>Live</span>
+<button class="avatar" aria-label="Account menu">D</button>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 12px">
+<nav class="seg" aria-label="Admin sections">
+<a class="on" href="AdminPay.dc.html" aria-current="page">Payments</a>
+<a href="AdminGames.dc.html">Games</a>
+<a href="AdminPlayers.dc.html">Players</a>
+</nav>
+<div><span class="cond" style="font-size: 30px; font-weight: 700">{{paidCount}} of 10</span> <span style="font-size: 15px; color: #9AA1AD">entries paid for Week 5</span></div>
+<div style="font-size: 13px; line-height: 1.4; color: #9AA1AD">Everyone starts unpaid. Only paid entries count in this week's results. Change anytime, even after the week ends.</div>
+<div style="background: #171A21; border: 1px solid #232733; border-radius: 14px; overflow: hidden">
+<sc-for list="{{entries}}" as="e" hint-placeholder-count="10">
+<div class="li">
+<div style="flex-grow: 1">
+<div style="font-size: 17px; font-weight: 600">{{e.n}} <span style="font-size: 14px; font-weight: 500; color: #9AA1AD">@{{e.u}}</span></div>
+<div style="font-size: 13px; color: #9AA1AD">Submitted {{e.at}}</div>
+</div>
+<button class="{{e.cls}}" aria-pressed="{{e.paid}}" onClick="{{e.toggle}}">{{e.label}}</button>
+</div>
+</sc-for>
+</div>
+<div style="font-size: 14px; color: #9AA1AD">Didn't submit this week: <strong style="color: #F2F3F5">Ben, Luis</strong></div>
+</main>
+<nav class="nav" aria-label="Main">
+<a href="MyPicksLive.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>My Picks</a>
+<a href="Live.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M6 20V11M12 20V4M18 20v-6"></path></svg>Leaderboard</a>
+<a href="Games.dc.html"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 12h16M12 5v14"></path></svg>Games</a>
+<a class="on" href="AdminPay.dc.html" aria-current="page"><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"></path></svg>Admin</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+const ENTRIES = [
+  ['Mike', 'mikeg', 'Tue 8:14 PM'], ['Sarah', 'sarahb', 'Tue 9:02 PM'], ['Dan', 'dan_the_man', 'Wed 7:40 AM'],
+  ['Tony', 'tonyp', 'Wed 12:15 PM'], ['Jess', 'jessk', 'Wed 6:51 PM'], ['Ryan', 'ryno', 'Wed 10:22 PM'],
+  ['Kevin', 'kev', 'Thu 8:05 AM'], ['Alex', 'alexr', 'Thu 9:47 AM'], ['Matt', 'mattyice', 'Thu 11:30 AM'],
+  ['Nick', 'nickd', 'Thu 11:58 AM']
+];
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const paid = {};
+    ENTRIES.forEach(([n]) => { paid[n] = n !== 'Nick'; });
+    this.state = { paid };
+  }
+  renderVals() {
+    const { paid } = this.state;
+    return {
+      paidCount: Object.values(paid).filter(Boolean).length,
+      entries: ENTRIES.map(([n, u, at]) => ({
+        n, u, at, paid: paid[n],
+        cls: paid[n] ? 'pay yes' : 'pay no',
+        label: paid[n] ? 'Paid ✓' : 'Unpaid',
+        toggle: () => this.setState({ paid: Object.assign({}, paid, { [n]: !paid[n] }) })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>
