@@ -32,6 +32,7 @@ export default function LockedPicks({
   userName,
   tiebreakerLabel,
   lockShort,
+  other = false,
 }: {
   games: GameRow[];
   entry: EntryRecord | null;
@@ -39,11 +40,13 @@ export default function LockedPicks({
   userName: string;
   tiebreakerLabel: string;
   lockShort: string;
+  /** Viewing another player's picks (Leaderboard drill-down). */
+  other?: boolean;
 }) {
   if (!entry) {
     return (
       <p data-testid="no-entry" className="rounded-xl border border-border bg-surface p-5 text-center text-muted">
-        You didn&apos;t enter picks for Week {weekNumber}.
+        {other ? `${userName} didn't enter picks for Week ${weekNumber}.` : `You didn't enter picks for Week ${weekNumber}.`}
       </p>
     );
   }
@@ -62,7 +65,7 @@ export default function LockedPicks({
         {chip(scored.wrong, 'Wrong', 'chip-wrong')}
         {chip(scored.pending, 'To play', 'chip-pending')}
       </div>
-      <p className="text-sm text-muted">Picks locked {lockShort} · your pick is highlighted</p>
+      <p className="text-sm text-muted">Picks locked {lockShort} · {other ? 'their' : 'your'} pick is highlighted</p>
 
       {games.map((g) => {
         const pick = entry.picks[g.id];

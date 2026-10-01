@@ -109,3 +109,13 @@ export async function logoutViaUi(page: Page) {
   await page.getByRole('menuitem', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
 }
+
+/**
+ * Asserts the page never shows an "X of N" player count. The only allowed "N of M" phrases are
+ * "N of M games final" and "N of M correct" (games, not players).
+ */
+export async function expectNoPlayerCountOf(page: Page) {
+  const text = await page.locator('body').innerText();
+  const bad = [...text.matchAll(/\b\d+ of \d+\b(?! games final| correct)/g)].map((m) => m[0]);
+  expect(bad, 'found an "X of N" count that is not about games').toEqual([]);
+}
