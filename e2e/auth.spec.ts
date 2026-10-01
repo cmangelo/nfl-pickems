@@ -110,8 +110,8 @@ test('admin sees the Admin tab and can open it', async ({ page, context }) => {
   await loginAs(context, 'admin');
   await page.goto('/picks');
   await nav(page).getByRole('link', { name: 'Admin' }).click();
-  await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole('heading', { name: 'Admin' })).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/payments$/);
+  await expect(page.getByRole('navigation', { name: 'Admin' })).toBeVisible();
 });
 
 test('admin can log in through the UI with the seeded credentials', async ({ page }) => {
