@@ -42,6 +42,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 
 - One point per correct pick.
 - Each week is ranked separately. **Only users who submitted picks that week and are marked paid** are counted.
+- **Participation is opt-in each week.** Registered users aren't expected to play every week. Nobody is counted as "missing" for not submitting, and the UI never shows an "X of [total users]" figure.
 - Ranking order:
   1. Most correct picks.
   2. Tiebreaker: closest to the actual Monday night total. Over and under count equally (absolute difference).
@@ -74,7 +75,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 
 ## 7. Admin
 
-- **Payments (per week):** see everyone who submitted picks that week and check each one off as paid or unpaid.
+- **Payments (per week):** see everyone who submitted picks that week and check each one off as paid or unpaid. Show "N paid · M unpaid" rather than "N of total". Don't list "didn't submit" users (the mocks do; drop it).
   - Every entry starts **unpaid**. Players are expected to pay by Thursday, but payments are collected outside the app.
   - Payment status can be changed **at any time**, for any week. It never locks.
   - Unpaid entries are left out of that week's results. The user isn't removed and can still play other weeks.
@@ -99,11 +100,11 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 - **Week picker** ("Week 5 ▾" in the header) switches the week for every view. Its list of weeks, with your score, rank and the winner, doubles as your pick history. There is no separate History page.
 - **Avatar menu** (top right): Change PIN, Log out.
 - What each view shows depends on the week's state:
-  - **Open (before lock):** My Picks is editable. Leaderboard and Games show "revealed Thu 12 PM" and who has submitted (names only).
+  - **Open (before lock):** My Picks is editable. Leaderboard and Games show "revealed Thu 12 PM" and a list of who's in so far (names only). Show it as a count, for example "8 in", never "8 of 10". There's no expected number of players, because anyone who wants to play a given week just submits.
   - **In progress:** My Picks is read-only, marked right/wrong/pending. Leaderboard is live. Games shows each game's pick split with names.
   - **Final:** the Leaderboard becomes the recap, with the winner banner and stats.
 - **Admin** sub-tabs: Payments and Games use the week picker. Players isn't tied to a week, so the week picker is hidden there.
-- Dark theme, orange accent.
+- **Theme:** dark mode. Accent color TBD. Leaning **teal**. Not orange (the current mocks), red, or pink. Green was considered and is a fallback. Because correct/wrong already use green/red, a teal accent must stay clearly distinct from the "correct" green (different lightness, plus icons).
 
 ## 10. Platform
 
