@@ -61,7 +61,8 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 ### Live leaderboard (while the week is in progress)
 
 - After the lock, the week's page becomes a **live leaderboard** that updates as each game goes final. For example: Thursday night, then the Sunday early games, then the late games, then Sunday night, then Monday.
-- It shows each player's correct picks so far, their **max possible** (correct + games still to play that they could win), and which of their picks are still pending.
+- It shows each player's correct picks so far and their tiebreaker guess. Tap a player to see all their picks, marked right, wrong or pending.
+- A **Games** view shows each game's result and the pick split (for example, "6 picked TB · 3 picked ATL").
 - Ranking uses correct picks so far. Players with the same count share a rank (for example, "T-1st"). The Monday-night tiebreaker only applies once that game is final.
 - Shows "Updated X min ago · N of M games final".
 - Unpaid entries appear greyed out as "not counted" until an admin marks them paid.
