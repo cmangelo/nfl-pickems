@@ -93,13 +93,25 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 - Opening and locking a week happen automatically at the scheduled times. They don't depend on the sync.
 - No live in-game scores (no score ticker while a game is being played). The leaderboard only counts games once they're **final**.
 
-## 9. Platform
+## 9. Navigation
+
+- **Bottom nav** = views of the selected week: **My Picks · Leaderboard · Games**, plus **Admin** for admins only.
+- **Week picker** ("Week 5 ▾" in the header) switches the week for every view. Its list of weeks, with your score, rank and the winner, doubles as your pick history. There is no separate History page.
+- **Avatar menu** (top right): Change PIN, Log out.
+- What each view shows depends on the week's state:
+  - **Open (before lock):** My Picks is editable. Leaderboard and Games show "revealed Thu 12 PM" and who has submitted (names only).
+  - **In progress:** My Picks is read-only, marked right/wrong/pending. Leaderboard is live. Games shows each game's pick split with names.
+  - **Final:** the Leaderboard becomes the recap, with the winner banner and stats.
+- **Admin** sub-tabs: Payments and Games use the week picker. Players isn't tied to a week, so the week picker is hidden there.
+- Dark theme, orange accent.
+
+## 10. Platform
 
 - **Mobile-first.** Designed for a phone opened from a text-message link. Works on desktop but isn't optimized for it.
 - Hosting: Vercel free tier, using the default `*.vercel.app` URL.
 - Stack: Next.js + Postgres (Neon, free tier, through the Vercel integration).
 
-## 10. Out of scope (for now)
+## 11. Out of scope (for now)
 
 - Season-long leaderboard or cumulative stats
 - Backfilling weeks before launch
