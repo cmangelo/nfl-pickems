@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.pglite*
+/tmp
+playwright-report
+test-results
+.env*.local
+.env
+*.tsbuildinfo
+next-env.d.ts
