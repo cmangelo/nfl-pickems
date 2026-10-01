@@ -63,7 +63,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 
 - After the lock, the week's page becomes a **live leaderboard** that updates as each game goes final. For example: Thursday night, then the Sunday early games, then the late games, then Sunday night, then Monday.
 - It shows each player's correct picks so far and their tiebreaker guess. Tap a player to see all their picks, marked right, wrong or pending.
-- A **Games** view shows each game's result and the pick split (for example, "6 picked TB · 3 picked ATL").
+- A **Games** view shows each game's result and the pick split as **counts only** (for example, "18 picked TB · 12 picked ATL") with a split bar. **No name lists**: there can be 30+ players, so names don't scale. The logged-in user's side is clearly highlighted (for example, a "Your pick" marker on that side). To see who picked what, tap a player on the Leaderboard.
 - Ranking uses correct picks so far. Players with the same count share a rank (for example, "T-1st"). The Monday-night tiebreaker only applies once that game is final.
 - Shows "Updated X min ago · N of M games final".
 - Unpaid entries appear greyed out as "not counted" until an admin marks them paid.
@@ -101,7 +101,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 - **Avatar menu** (top right): Change PIN, Log out.
 - What each view shows depends on the week's state:
   - **Open (before lock):** My Picks is editable. Leaderboard and Games show "revealed Thu 12 PM" and a list of who's in so far (names only). Show it as a count, for example "8 in", never "8 of 10". There's no expected number of players, because anyone who wants to play a given week just submits.
-  - **In progress:** My Picks is read-only, marked right/wrong/pending. Leaderboard is live. Games shows each game's pick split with names.
+  - **In progress:** My Picks is read-only, marked right/wrong/pending. Leaderboard is live. Games shows each game's pick split as counts, with your side highlighted.
   - **Final:** the Leaderboard becomes the recap, with the winner banner and stats.
 - **Admin** sub-tabs: Payments and Games use the week picker. Players isn't tied to a week, so the week picker is hidden there.
 - **Theme:** dark mode. Accent color TBD. Leaning **teal**. Not orange (the current mocks), red, or pink. Green was considered and is a fallback. Because correct/wrong already use green/red, a teal accent must stay clearly distinct from the "correct" green (different lightness, plus icons).
