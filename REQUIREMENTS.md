@@ -104,7 +104,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
   - **In progress:** My Picks is read-only, marked right/wrong/pending. Leaderboard is live. Games shows each game's pick split as counts, with your side highlighted.
   - **Final:** the Leaderboard becomes the recap, with the winner banner and stats.
 - **Admin** sub-tabs: Payments and Games use the week picker. Players isn't tied to a week, so the week picker is hidden there.
-- **Theme:** dark mode with a **mono** (off-white) accent: `#f2f2f7` fills with dark text, `#ffffff` for accent text on dark, so green/red results are the only hues. Teal, then indigo, were tried first and replaced. Not orange (the current mocks), red, or pink. Because correct/wrong already use green/red, the accent must stay clearly distinct from both (indigo is, in hue and lightness, plus icons).
+- **Theme:** dark mode with an **amber** accent: `#fbbf24` fills with dark text, `#fcd34d` for accent text on dark. Teal, indigo and mono (off-white) were tried first and replaced. Not orange (the current mocks), red, or pink. Because correct/wrong already use green/red, the accent must stay clearly distinct from both (indigo is, in hue and lightness, plus icons).
 
 ## 10. Platform
 
