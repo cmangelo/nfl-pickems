@@ -117,7 +117,7 @@ export function LockPanel({
         </button>
       )}
       {error && (
-        <p role="alert" className="mt-2 text-sm text-[#ff9c9c]">
+        <p role="alert" data-testid="lock-error" className="mt-2 text-sm text-[#ff9c9c]">
           {error}
         </p>
       )}

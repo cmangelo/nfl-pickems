@@ -10,7 +10,7 @@ import { getEspnClient } from '@/lib/espn';
 import { submitPicks } from '@/lib/picks';
 import { importSeason } from '@/lib/schedule';
 import type { Side } from '@/lib/scoring';
-import { adminOverrideGame, clearOverride, syncScores } from '@/lib/sync';
+import { adminOverrideGame, clearOverride, syncScores, voidGame } from '@/lib/sync';
 import { now } from '@/lib/time';
 import { setWeekLockOverride } from '@/lib/weeks';
 
@@ -62,7 +62,8 @@ export async function setLockAction(weekId: number, ptValue: string | null): Pro
     at = admin.fromPtInputValue(String(ptValue));
     if (!at) return bad('Enter a valid date and time.');
   }
-  await setWeekLockOverride(Number(weekId), at);
+  const res = await setWeekLockOverride(Number(weekId), at);
+  if (!res.ok) return bad(res.error);
   refresh();
   return { ok: true };
 }
@@ -84,6 +85,17 @@ export async function overrideGameAction(
   return { ok: true };
 }
 
+export async function voidGameAction(gameId: number): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    await voidGame(Number(gameId));
+  } catch (e) {
+    return bad(e instanceof Error ? e.message : 'Could not void the game.');
+  }
+  refresh();
+  return { ok: true };
+}
+
 export async function clearOverrideAction(gameId: number): Promise<ActionResult> {
   await requireAdmin();
   await clearOverride(Number(gameId));
@@ -97,12 +109,12 @@ export async function adminSubmitPicksAction(
   picks: Record<number, Side>,
   tiebreaker: number,
 ): Promise<ActionResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const res = await submitPicks(
     Number(userId),
     Number(weekId),
     { picks, tiebreaker: Number(tiebreaker) },
-    { now: await now(), asAdmin: true },
+    { now: await now(), asAdmin: true, actorId: me.id },
   );
   if (!res.ok) return bad(res.message);
   refresh();
@@ -125,7 +137,7 @@ export async function setAdminAction(userId: number, isAdmin: boolean): Promise<
 
 export async function removeUserAction(userId: number): Promise<ActionResult> {
   const me = await requireAdmin();
-  const res = await admin.removeUser(me.id, Number(userId));
+  const res = await admin.removeUser(me.id, Number(userId), await now());
   if (!res.ok) return bad(res.error);
   refresh();
   return { ok: true };

@@ -2,10 +2,9 @@ import NoWeeks from '@/components/NoWeeks';
 import { requireUser } from '@/lib/auth';
 import { getEntry } from '@/lib/picks';
 import { getSelectedWeek } from '@/lib/selected-week';
-import { tiebreakerGame } from '@/lib/scoring';
 import { formatPT, now as getNow } from '@/lib/time';
-import { maybeRefresh } from '@/lib/sync';
-import { effectiveLock } from '@/lib/weeks';
+import { refreshWithBudget } from '@/lib/sync';
+import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
 import { groupGamesByPtDay } from '@/lib/week-view';
 import Countdown from './Countdown';
 import LockedPicks from './LockedPicks';
@@ -17,7 +16,7 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
   const t = await getNow();
   let sel = await getSelectedWeek(weekParam, t);
   if (sel.state === 'locked') {
-    await maybeRefresh(t); // refresh-on-view: throttled, never throws
+    await refreshWithBudget(t); // refresh-on-view: throttled, time-boxed, never throws
     sel = await getSelectedWeek(weekParam, t);
   }
   const { week, games, state } = sel;
@@ -30,7 +29,7 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
     );
 
   const lock = effectiveLock(week);
-  const tb = tiebreakerGame(games);
+  const tb = await resolveTiebreakerGame(week, games, t);
   const tbLabel = tb
     ? `Total points in ${tb.awayTeam} @ ${tb.homeTeam} (${formatPT(tb.kickoffAt, 'EEE h:mm a')})`
     : 'Tiebreaker';

@@ -3,11 +3,10 @@ import { notFound, redirect } from 'next/navigation';
 import NoWeeks from '@/components/NoWeeks';
 import { requireUser } from '@/lib/auth';
 import { listEntries } from '@/lib/picks';
-import { tiebreakerGame } from '@/lib/scoring';
 import { getSelectedWeek } from '@/lib/selected-week';
-import { maybeRefresh } from '@/lib/sync';
+import { refreshWithBudget } from '@/lib/sync';
 import { formatPT, now as getNow } from '@/lib/time';
-import { effectiveLock } from '@/lib/weeks';
+import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
 import LockedPicks from '../../../picks/LockedPicks';
 
 export default async function PlayerPicksPage({
@@ -24,7 +23,7 @@ export default async function PlayerPicksPage({
   const t = await getNow();
   let sel = await getSelectedWeek(weekParam, t);
   if (sel.state === 'locked') {
-    await maybeRefresh(t);
+    await refreshWithBudget(t);
     sel = await getSelectedWeek(weekParam, t);
   }
   const { week, games, state } = sel;
@@ -34,7 +33,7 @@ export default async function PlayerPicksPage({
   if (state === 'open') redirect(back);
 
   const entry = (await listEntries(week.id)).find((e) => e.userId === Number(userId)) ?? null;
-  const tb = tiebreakerGame(games);
+  const tb = await resolveTiebreakerGame(week, games, t);
   const tbLabel = tb
     ? `Total points in ${tb.awayTeam} @ ${tb.homeTeam} (${formatPT(tb.kickoffAt, 'EEE h:mm a')})`
     : 'Tiebreaker';

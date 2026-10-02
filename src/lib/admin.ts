@@ -1,10 +1,11 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { formatInTimeZone } from 'date-fns-tz';
 import { getDb } from '@/db';
-import { entries, sessions, users } from '@/db/schema';
+import { entries, sessions, users, weeks } from '@/db/schema';
 import { validatePin } from './auth';
 import { hashPin } from './pin';
 import { PT, ptWallTimeToUtc } from './time';
+import { weekState } from './weeks';
 
 export type AdminResult = { ok: true } | { ok: false; error: string };
 
@@ -55,21 +56,32 @@ export async function setAdmin(actorId: number, userId: number, isAdmin: boolean
   return rows.length ? { ok: true } : { ok: false, error: 'User not found.' };
 }
 
-/** Deletes a user with their sessions, entries and picks. An admin cannot remove themselves. */
-export async function removeUser(actorId: number, userId: number): Promise<AdminResult> {
+/**
+ * Soft-removes a player: sets users.deactivated_at, deletes their sessions and drops their entry for the
+ * currently OPEN week(s) only (they are out). Entries and picks of locked/final weeks are kept so past
+ * results never change; the username stays reserved. Login must refuse deactivated users.
+ * An admin cannot remove themselves.
+ */
+export async function removeUser(actorId: number, userId: number, at: Date): Promise<AdminResult> {
   if (actorId === userId) return { ok: false, error: "You can't remove yourself." };
   const db = await getDb();
-  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
-  if (!u) return { ok: false, error: 'User not found.' };
-  // picks cascade from entries; sessions/entries are deleted explicitly too for clarity.
+  const [u] = await db.select({ id: users.id, deactivatedAt: users.deactivatedAt }).from(users).where(eq(users.id, userId));
+  if (!u || u.deactivatedAt) return { ok: false, error: 'User not found.' };
+  const openWeekIds = (await db.select().from(weeks)).filter((w) => weekState(w, [], at) === 'open').map((w) => w.id);
+  // Deactivate last so a partial failure can simply be retried.
+  if (openWeekIds.length > 0) {
+    await db.delete(entries).where(and(eq(entries.userId, userId), inArray(entries.weekId, openWeekIds))); // picks cascade
+  }
   await db.delete(sessions).where(eq(sessions.userId, userId));
-  await db.delete(entries).where(eq(entries.userId, userId));
-  await db.delete(users).where(eq(users.id, userId));
+  await db.update(users).set({ deactivatedAt: at }).where(eq(users.id, userId));
   return { ok: true };
 }
 
-export async function listUsers() {
+/** Active players by default; pass includeDeactivated to also get removed ones. */
+export async function listUsers({ includeDeactivated = false }: { includeDeactivated?: boolean } = {}) {
   const db = await getDb();
   const rows = await db.select().from(users);
-  return rows.sort((a, b) => a.firstName.localeCompare(b.firstName) || a.id - b.id);
+  return rows
+    .filter((u) => includeDeactivated || !u.deactivatedAt)
+    .sort((a, b) => a.firstName.localeCompare(b.firstName) || a.id - b.id);
 }

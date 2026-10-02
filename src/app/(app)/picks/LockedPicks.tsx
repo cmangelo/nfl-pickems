@@ -2,10 +2,12 @@ import type { GameRow } from '@/lib/selected-week';
 import type { EntryRecord } from '@/lib/picks';
 import { scoreEntry, type Side } from '@/lib/scoring';
 import { formatPT } from '@/lib/time';
+import { adminEditLabel } from '@/lib/week-view';
 
-type Mark = 'right' | 'wrong' | 'pending';
+type Mark = 'right' | 'wrong' | 'pending' | 'void';
 
 function markFor(g: GameRow, pick: Side | undefined): Mark {
+  if (g.status === 'void') return 'void';
   if (g.status !== 'final' || g.winner === null) return 'pending';
   return g.winner !== 'tie' && pick === g.winner ? 'right' : 'wrong';
 }
@@ -14,10 +16,11 @@ const MARK_STYLE: Record<Mark, string> = {
   right: 'border-correct bg-correct/15 text-[#8ff0bc]',
   wrong: 'border-wrong bg-wrong/15 text-[#ff9c9c] line-through',
   pending: 'border-accent bg-accent/15 text-accent-bright',
+  void: 'border-border bg-surface-2 text-muted',
 };
 
 function MarkIcon({ mark }: { mark: Mark }) {
-  if (mark === 'pending') return null;
+  if (mark === 'pending' || mark === 'void') return null;
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={mark === 'right' ? 'Correct' : 'Wrong'}>
       <path d={mark === 'right' ? 'M5 12l5 5 9-10' : 'M6 6l12 12M18 6L6 18'} />
@@ -51,6 +54,7 @@ export default function LockedPicks({
     );
   }
   const scored = scoreEntry(games, { userId: entry.userId, name: userName, paid: entry.paid, tiebreaker: entry.tiebreaker, picks: entry.picks });
+  const editedLabel = adminEditLabel(entry.editedByName, entry.adminEditedAt);
   const chip = (n: number, label: string, id: string) => (
     <div data-testid={id} className="flex-1 rounded-xl border border-border bg-surface px-3 py-2">
       <div className="text-3xl font-bold leading-none">{n}</div>
@@ -66,6 +70,11 @@ export default function LockedPicks({
         {chip(scored.pending, 'To play', 'chip-pending')}
       </div>
       <p className="text-sm text-muted">Picks locked {lockShort} · {other ? 'their' : 'your'} pick is highlighted</p>
+      {editedLabel && (
+        <p data-testid="admin-edited" className="text-sm text-muted">
+          {editedLabel}
+        </p>
+      )}
 
       {games.map((g) => {
         const pick = entry.picks[g.id];
@@ -92,7 +101,19 @@ export default function LockedPicks({
           <div key={g.id} data-testid={`game-${g.id}`} data-result={mark} className="rounded-xl border border-border bg-surface p-3">
             <div className="mb-2 flex justify-between text-xs text-muted">
               <span>{settled ? (tie ? 'Tie' : 'Final') : formatPT(g.kickoffAt, "EEE h:mm a 'PT'")}</span>
-              <span>{mark === 'right' ? 'Correct' : mark === 'wrong' ? (tie ? 'Wrong (tie)' : 'Wrong') : 'Pending'}</span>
+              <span>
+                {mark === 'right'
+                  ? 'Correct'
+                  : mark === 'wrong'
+                    ? tie
+                      ? 'Wrong (tie)'
+                      : 'Wrong'
+                    : mark === 'void'
+                      ? 'Void'
+                      : g.status === 'postponed'
+                        ? 'Postponed'
+                        : 'Pending'}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               {side('away', g.awayTeam, g.awayScore)}

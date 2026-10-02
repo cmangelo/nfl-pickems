@@ -9,7 +9,8 @@ export interface ScoringGame {
   awayTeam: string;
   homeScore: number | null;
   awayScore: number | null;
-  status: 'scheduled' | 'final';
+  /** 'postponed' counts as pending; 'void' counts for nobody (excluded from correct/wrong/total). */
+  status: 'scheduled' | 'final' | 'postponed' | 'void';
   winner: 'home' | 'away' | 'tie' | null;
 }
 
@@ -44,6 +45,7 @@ export interface RankedEntry extends ScoredEntry {
 }
 
 const isSettled = (g: ScoringGame) => g.status === 'final' && g.winner !== null;
+const isVoid = (g: Pick<ScoringGame, 'status'>) => g.status === 'void';
 
 /**
  * The tiebreaker game: the last-kicking-off game on Monday (PT) of the week;
@@ -60,18 +62,22 @@ export function tiebreakerGame<T extends Pick<ScoringGame, 'id' | 'kickoffAt'>>(
   return latest(monday.length ? monday : games);
 }
 
-/** Actual combined score of the tiebreaker game, once it is final. */
-export function actualTiebreakerTotal(games: ScoringGame[]): number | null {
-  const g = tiebreakerGame(games);
+/**
+ * Actual combined score of the tiebreaker game, once it is final. `tiebreakerGameId` (the game frozen
+ * at the lock) wins over the computed one; a void tiebreaker game yields no total.
+ */
+export function actualTiebreakerTotal(games: ScoringGame[], tiebreakerGameId?: number | null): number | null {
+  const g = (tiebreakerGameId != null ? games.find((x) => x.id === tiebreakerGameId) : undefined) ?? tiebreakerGame(games);
   if (!g || g.status !== 'final' || g.homeScore === null || g.awayScore === null) return null;
   return g.homeScore + g.awayScore;
 }
 
-export function scoreEntry(games: ScoringGame[], entry: ScoringEntry): ScoredEntry {
+export function scoreEntry(games: ScoringGame[], entry: ScoringEntry, tiebreakerGameId?: number | null): ScoredEntry {
   let correct = 0;
   let wrong = 0;
   let pending = 0;
   for (const g of games) {
+    if (isVoid(g)) continue;
     if (!isSettled(g)) {
       pending++;
       continue;
@@ -79,7 +85,7 @@ export function scoreEntry(games: ScoringGame[], entry: ScoringEntry): ScoredEnt
     if (g.winner !== 'tie' && entry.picks[g.id] === g.winner) correct++;
     else wrong++;
   }
-  const total = actualTiebreakerTotal(games);
+  const total = actualTiebreakerTotal(games, tiebreakerGameId);
   return {
     ...entry,
     correct,
@@ -94,8 +100,8 @@ export function scoreEntry(games: ScoringGame[], entry: ScoringEntry): ScoredEnt
  * Ranks counted (paid) entries: correct desc, then (only once the tiebreaker game is final)
  * tiebreaker diff asc. Equal on both => shared rank (competition ranking 1,1,3), `tied` set.
  */
-export function rankEntries(games: ScoringGame[], entries: ScoringEntry[]): RankedEntry[] {
-  const scored = entries.map((e) => scoreEntry(games, e)).filter((e) => e.counted);
+export function rankEntries(games: ScoringGame[], entries: ScoringEntry[], tiebreakerGameId?: number | null): RankedEntry[] {
+  const scored = entries.map((e) => scoreEntry(games, e, tiebreakerGameId)).filter((e) => e.counted);
   scored.sort(
     (a, b) =>
       b.correct - a.correct ||
@@ -139,8 +145,9 @@ export interface WeekStats {
 
 export interface WeekSummary {
   gamesFinal: number;
+  /** Games that count: void games are excluded. */
   gamesTotal: number;
-  /** Every game is final (and there is at least one). */
+  /** Every game is final or void (and there is at least one). */
   isFinal: boolean;
   ranked: RankedEntry[];
   /** Unpaid entries, with their correct counts; excluded from ranking, stats and splits. */
@@ -155,14 +162,19 @@ export interface WeekSummary {
   tiebreakerActualTotal: number | null;
 }
 
-export function weekSummary(games: ScoringGame[], entries: ScoringEntry[]): WeekSummary {
-  const ranked = rankEntries(games, entries);
+export function weekSummary(
+  games: ScoringGame[],
+  entries: ScoringEntry[],
+  { tiebreakerGameId = null }: { tiebreakerGameId?: number | null } = {},
+): WeekSummary {
+  const ranked = rankEntries(games, entries, tiebreakerGameId);
   const notCounted = entries
     .filter((e) => !e.paid)
-    .map((e) => scoreEntry(games, e))
+    .map((e) => scoreEntry(games, e, tiebreakerGameId))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const gamesFinal = games.filter((g) => g.status === 'final').length;
-  const isFinal = games.length > 0 && gamesFinal === games.length;
+  const playable = games.filter((g) => !isVoid(g));
+  const gamesFinal = playable.filter((g) => g.status === 'final').length;
+  const isFinal = games.length > 0 && gamesFinal === playable.length;
   const counted = entries.filter((e) => e.paid);
 
   const splits: Record<number, GameSplit> = {};
@@ -216,10 +228,10 @@ export function weekSummary(games: ScoringGame[], entries: ScoringEntry[]): Week
     }
   }
 
-  const tb = tiebreakerGame(games);
+  const tb = (tiebreakerGameId != null ? games.find((g) => g.id === tiebreakerGameId) : undefined) ?? tiebreakerGame(games);
   return {
     gamesFinal,
-    gamesTotal: games.length,
+    gamesTotal: playable.length,
     isFinal,
     ranked,
     notCounted,
@@ -228,6 +240,6 @@ export function weekSummary(games: ScoringGame[], entries: ScoringEntry[]): Week
     splits,
     upset: upset ? { gameId: upset.gameId, wrongCount: upset.wrongCount, totalCount: upset.totalCount, correctCount: upset.correctCount, correctNames: upset.correctNames } : null,
     tiebreakerGameId: tb?.id ?? null,
-    tiebreakerActualTotal: actualTiebreakerTotal(games),
+    tiebreakerActualTotal: actualTiebreakerTotal(games, tiebreakerGameId),
   };
 }

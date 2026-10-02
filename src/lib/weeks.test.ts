@@ -25,6 +25,12 @@ describe('weekState', () => {
   it('locked at lock while games remain', () => {
     expect(weekState(base, sched, d('2026-10-08T19:00:00Z'))).toBe('locked');
   });
+  it('final when every game is final or void; postponed keeps the week locked', () => {
+    const t = d('2026-10-13T20:00:00Z');
+    expect(weekState(base, [{ status: 'final' }, { status: 'void' }], t)).toBe('final');
+    expect(weekState(base, [{ status: 'final' }, { status: 'postponed' }], t)).toBe('locked');
+    expect(weekState(base, [{ status: 'void' }], t)).toBe('final');
+  });
   it('final when all games final and past lock', () => {
     expect(weekState(base, allFinal, d('2026-10-13T20:00:00Z'))).toBe('final');
   });
@@ -88,5 +94,23 @@ describe('week queries', () => {
     expect((await db.select().from(weeks).where(eq(weeks.id, week.id)))[0].lockOverrideAt).toEqual(d('2026-10-09T01:00:00Z'));
     await setWeekLockOverride(week.id, null);
     expect((await db.select().from(weeks).where(eq(weeks.id, week.id)))[0].lockOverrideAt).toBeNull();
+  });
+
+  it('setWeekLockOverride refuses a lock later than the first kickoff; earlier or equal is fine', async () => {
+    // makeWeek kickoffs: lock+1h, +2h. First kickoff = Oct 8 20:00Z.
+    const { week } = await makeWeek({ weekNumber: 5, ...base }, [{}, {}]);
+    const db = await getDb();
+    const lockOf = async () => (await db.select().from(weeks).where(eq(weeks.id, week.id)))[0].lockOverrideAt;
+    expect(await setWeekLockOverride(week.id, d('2026-10-08T20:00:01Z'))).toEqual({
+      ok: false,
+      error: "The lock can't be later than the week's first kickoff.",
+    });
+    expect(await lockOf()).toBeNull();
+    expect(await setWeekLockOverride(week.id, d('2026-10-08T20:00:00Z'))).toEqual({ ok: true });
+    expect(await lockOf()).toEqual(d('2026-10-08T20:00:00Z'));
+    expect(await setWeekLockOverride(week.id, d('2026-10-07T12:00:00Z'))).toEqual({ ok: true });
+    expect(await setWeekLockOverride(week.id, null)).toEqual({ ok: true }); // reset is always allowed
+    expect(await lockOf()).toBeNull();
+    expect(await setWeekLockOverride(9999, null)).toMatchObject({ ok: false });
   });
 });

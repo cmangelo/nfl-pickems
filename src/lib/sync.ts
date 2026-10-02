@@ -3,23 +3,19 @@ import { getDb } from '@/db';
 import { games, syncState } from '@/db/schema';
 import { getEspnClient, type EspnClient } from './espn';
 import { upsertScoreboardGames } from './schedule';
-import { getCurrentWeek, getPreviousWeek, weekState, type WeekRow } from './weeks';
+import { getCurrentWeek, getPreviousWeek, getVisibleWeeks, weekState, type WeekRow } from './weeks';
 
 export const SYNC_KEY = 'scores';
 export const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 /** Minimum gap between attempts in this process after a failed sync (avoid hammering ESPN on every view). */
 const FAILURE_BACKOFF_MS = 60 * 1000;
 
-async function weekIsFinal(week: WeekRow, now: Date): Promise<boolean> {
-  const db = await getDb();
-  const rows = await db.select({ status: games.status }).from(games).where(eq(games.weekId, week.id));
-  return weekState(week, rows, now) === 'final';
-}
-
 /**
- * Pulls the scoreboard for the current week and the previous week (unless that one is already final;
- * `force` re-syncs it anyway) and updates kickoff times, final scores and winners. Games with
- * manual_override keep their scores/winner. Records sync_state 'scores'.
+ * Pulls the scoreboard for the current week and every other visible week that is not final yet (so a
+ * late result, e.g. a rescheduled game, is still picked up), and updates kickoff times, final scores,
+ * winners and postponements. `force` also re-syncs the previous week even when it is final. Only weeks of
+ * the current week's season are synced. Games with manual_override keep their scores/winner.
+ * Records sync_state 'scores'.
  */
 export async function syncScores({
   client,
@@ -36,7 +32,14 @@ export async function syncScores({
   if (current) {
     targets.push(current);
     const prev = await getPreviousWeek(current);
-    if (prev && prev.season === current.season && (force || !(await weekIsFinal(prev, now)))) targets.push(prev);
+    const visible = await getVisibleWeeks(now); // newest first
+    const rows = await db.select({ weekId: games.weekId, status: games.status }).from(games);
+    for (const w of visible) {
+      if (w.id === current.id || w.season !== current.season) continue;
+      const wg = rows.filter((r) => r.weekId === w.id);
+      const nonFinal = wg.length > 0 && weekState(w, wg, now) !== 'final';
+      if (nonFinal || (force && prev?.id === w.id)) targets.push(w);
+    }
   }
   let count = 0;
   for (const w of targets) {
@@ -62,6 +65,8 @@ export interface RefreshResult {
   ran: boolean;
   lastSyncedAt: Date | null;
   error?: string;
+  /** refreshWithBudget gave up waiting; the sync may still finish in the background. */
+  timedOut?: boolean;
 }
 
 /**
@@ -93,6 +98,26 @@ export function maybeRefresh(now: Date, client?: EspnClient): Promise<RefreshRes
   return p;
 }
 
+export const REFRESH_BUDGET_MS = 2500;
+
+/**
+ * maybeRefresh for page renders: waits at most `ms` for the sync. If it is slower the page renders with
+ * the data it has (`timedOut: true`); the sync keeps running in the background or is abandoned harmlessly.
+ */
+export async function refreshWithBudget(now: Date, ms: number = REFRESH_BUDGET_MS, client?: EspnClient): Promise<RefreshResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<RefreshResult>((resolve) => {
+    timer = setTimeout(() => resolve({ ran: false, lastSyncedAt: null, timedOut: true }), ms);
+  });
+  try {
+    return await Promise.race([maybeRefresh(now, client), timeout]);
+  } catch (e) {
+    return { ran: false, lastSyncedAt: null, error: e instanceof Error ? e.message : String(e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ---------- admin overrides ----------
 
 export async function adminOverrideGame(
@@ -119,4 +144,18 @@ export async function clearOverride(gameId: number): Promise<void> {
     .update(games)
     .set({ manualOverride: false, homeScore: null, awayScore: null, winner: null, status: 'scheduled' })
     .where(eq(games.id, gameId));
+}
+
+/**
+ * Voids a game (e.g. cancelled): it counts for nobody, is excluded from the games total, and a sync
+ * won't revive it (manual_override). "Clear override" restores it to scheduled.
+ */
+export async function voidGame(gameId: number): Promise<void> {
+  const db = await getDb();
+  const res = await db
+    .update(games)
+    .set({ status: 'void', manualOverride: true, homeScore: null, awayScore: null, winner: null })
+    .where(eq(games.id, gameId))
+    .returning({ id: games.id });
+  if (res.length === 0) throw new Error(`game ${gameId} not found`);
 }

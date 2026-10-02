@@ -59,7 +59,7 @@ Use `getEspnClient()`. In fixture mode, fixtures exist for 2026 weeks 5 (mixed f
 Routes (all POST except `now`, all 404 unless TEST_MODE=1):
 - `/api/test/reset`: wipe, migrate, seed admin (username `admin`, PIN `1234`, first name `Admin`)
 - `/api/test/seed-week`: `{ season?, weekNumber?, numGames?, results?, tuesday?, lockAt? }` returns `{ weekId, gameIds }`
-- `/api/test/set-result`: `{ gameId, winner: 'home'|'away'|'tie'|null, homeScore?, awayScore? }`
+- `/api/test/set-result`: `{ gameId, winner: 'home'|'away'|'tie'|null, homeScore?, awayScore?, status?: 'postponed'|'void' }` (winner null + status marks it postponed/void)
 - `/api/test/login`: `{ username }` creates a `sessions` row and sets the `session` cookie (no PIN check; creates a real session via `createSession`)
 - `/api/test/import-fixture-week?week=5[&season=2026]`: imports exactly that week from the ESPN fixture via `importSeason`; returns `{ weekId, gameIds }`
 - `/api/test/submit-picks`: `{ username, weekId, picks, tiebreaker }`; `picks` = `{gameId: side}` map or array of sides in kickoff order; uses `submitPicks` with `asAdmin` (works on locked weeks)
@@ -79,11 +79,21 @@ In e2e, seed locked weeks with a `weekNumber` that has no ESPN fixture (e.g. 7):
 ## Theme
 Dark, teal accent. CSS variables in `src/app/globals.css`: `--bg #0f1115`, `--accent #14b8a6`, `--accent-bright #2dd4bf`, `--correct #22c55e`, `--wrong #ef4444`.
 
+## Game statuses, lock rules, integrity helpers
+- Game status: `scheduled | final | postponed | void`. ESPN parser maps STATUS_POSTPONED/CANCELED/SUSPENDED to `postponed` (counts as pending); in-progress stays `scheduled`; a "completed" event with a missing score stays `scheduled`. `void` is admin-only (`voidGame`, sets `manual_override`; "Clear override" restores): it counts for nobody and is excluded from `gamesTotal`/correct/wrong, splits still shown greyed. A week is `final` when every game is `final` or `void`.
+- ESPN responses are validated (`parseScoreboardFor`/`validateScoreboardMeta`, throws `EspnMismatchError`) against the requested season, season type (default 2) and week; the fixture client goes through the same path. `RealEspnClient` has a 4 s fetch timeout. A malformed event is skipped with `console.warn`.
+- `upsertScoreboardGames` never moves a game into a different season's week; same-season moves (flex) are allowed and logged.
+- Lock rules: `importSeason` sets default lock = min(Thu 12 PT / Thanksgiving 9 AM PT, earliest kickoff). `setWeekLockOverride` returns `{ok}|{ok:false,error}` and refuses a lock later than the first kickoff. Non-admin `submitPicks` can't add/change a pick for a game with kickoff <= now (`game_started`).
+- `submitPicks` writes the entry + picks in ONE CTE statement (atomic on neon-http and pglite). `asAdmin` + `actorId`: edits of another player's entry set `entries.edited_by_admin_id/admin_edited_at` (shown by `adminEditLabel`); an admin can't edit their own entry after the lock (`own_entry_locked`). Admin edit-picks page hides other players' picks while the week is open.
+- `resolveTiebreakerGame(week, games, now)` (weeks.ts): live before the lock, then persisted in `weeks.tiebreaker_game_id` and used from then on. `weekSummary(..., { tiebreakerGameId })`; `loadWeekSummary(week, games, now)` wires it.
+- `refreshWithBudget(now, ms = 2500)` (sync.ts): pages use it instead of `maybeRefresh` so a slow ESPN never blocks rendering. `syncScores` syncs the current week plus every visible non-final week of that season (`force` also the previous week).
+- `removeUser(actorId, userId, at)` soft-deletes (`users.deactivated_at`), deletes sessions and the open week's entry; past/locked entries stay. `listUsers({ includeDeactivated })`. Login/signup in `auth.ts` must reject deactivated users (wired separately).
+
 ## Domain logic (src/lib)
 - `weeks.ts`: `weekState` (hidden/open/locked/final), `effectiveLock`, `defaultLockAt` (Thanksgiving = Thu 9 AM PT), `getCurrentWeek`, `getVisibleWeeks`, `setWeekLockOverride`.
 - `schedule.ts`: `importSeason` (upsert weeks/games by espn_id; respects manual overrides). Script: `npm run db:import-schedule -- --season 2026 --from N`.
 - `sync.ts`: `syncScores`, `maybeRefresh` (5-min throttle, never throws), `adminOverrideGame`, `clearOverride`. Cron: `GET /api/cron/sync` with `Authorization: Bearer $CRON_SECRET`.
-- `picks.ts`: `submitPicks` (complete form only; error codes `week_not_found|week_not_open|incomplete|invalid_pick|invalid_tiebreaker`), `getEntry`, `listEntries`.
+- `picks.ts`: `submitPicks` (complete form only; error codes `week_not_found|week_not_open|incomplete|invalid_pick|invalid_tiebreaker|game_started|own_entry_locked`), `getEntry`, `listEntries`.
 - `scoring.ts` (pure): `scoreEntry`, `rankEntries`, `weekSummary`, `tiebreakerGame`. Compute on the fly; no stats table.
 - `admin.ts`: `setPaid`, `resetPin`, `setAdmin`/`removeUser` (both refuse to act on self), `toPtInputValue`/`fromPtInputValue` (datetime-local in PT <-> UTC), `listUsers`.
 

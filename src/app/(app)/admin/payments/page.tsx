@@ -2,6 +2,7 @@ import NoWeeks from '@/components/NoWeeks';
 import { listEntries } from '@/lib/picks';
 import { getSelectedWeek } from '@/lib/selected-week';
 import { formatPT } from '@/lib/time';
+import { adminEditLabel } from '@/lib/week-view';
 import PaymentsList from './PaymentsList';
 
 export default async function AdminPaymentsPage({ searchParams }: { searchParams: Promise<{ week?: string | string[] }> }) {
@@ -21,6 +22,7 @@ export default async function AdminPaymentsPage({ searchParams }: { searchParams
           username: e.username,
           submitted: formatPT(e.submittedAt, "EEE h:mm a"),
           paid: e.paid,
+          edited: adminEditLabel(e.editedByName, e.adminEditedAt),
         }))}
       />
     </div>

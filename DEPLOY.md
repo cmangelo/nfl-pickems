@@ -67,6 +67,14 @@ Check it in Vercel → project → **Settings** → **Cron Jobs**. You can click
 - **Admin → Games**: "Sync from ESPN now", fix a score if ESPN is wrong, or change a week's lock time. Thanksgiving week already defaults to Thursday 9:00 AM PT.
 - **Admin → Players**: reset a forgotten PIN, make someone an admin.
 
+## Admin runbook
+
+- **A game is postponed or cancelled** (ESPN shows it as postponed; the app labels it "Postponed" and treats it as pending, so the week stays Live). Either wait for the rescheduled game to be played (the sync picks up the result and any new kickoff), or open **Admin → Games → Edit → Void game**. A void game counts for nobody (no correct or wrong, left out of the "N of M games final" total), and the week can finish without it. "Clear override" on that game undoes the void.
+- **ESPN has a wrong score**: **Admin → Games → Edit** the game, enter the score and winner, Save. It is marked "manual" and syncs won't overwrite it until you "Clear override".
+- **Changing the lock time**: **Admin → Games → Change**. The lock can never be later than the week's first kickoff (the app refuses it); an earlier lock is fine. "Reset to default" restores Thursday 12:00 PM PT (Thanksgiving 9:00 AM PT, or the first kickoff if that is earlier, e.g. a Wednesday game).
+- **Removing a player** only deactivates them: they are dropped from the currently open week, but their entries in locked and past weeks stay so old results never change, and the username stays taken.
+- **Editing a player's picks** (Admin → Payments or Games → Edit picks): before the lock another player's picks stay hidden and saving replaces them; after the lock you can edit anyone except yourself. Edits show up as "Edited by admin <name>" on the player's picks and in Payments.
+
 ## Schema changes later
 
 If a future change adds a migration (a new file in `drizzle/`), run `npm run db:migrate` against production again (step 4, with fresh `.env.local`) before or right after deploying.

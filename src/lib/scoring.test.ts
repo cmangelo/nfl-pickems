@@ -202,3 +202,46 @@ describe('weekSummary', () => {
     expect(w.winners).toEqual([]);
   });
 });
+
+describe('void and postponed games', () => {
+  const gs = [
+    fin(1, THU, 20, 10), // home won
+    game(2, SUN, { status: 'void' }),
+    game(3, SUN, { status: 'postponed' }),
+    game(4, MON), // scheduled
+  ];
+  const e = entry(1, 'Ann', { 1: 'home', 2: 'home', 3: 'home', 4: 'home' });
+
+  it('void counts for nobody; postponed is pending', () => {
+    expect(scoreEntry(gs, e)).toMatchObject({ correct: 1, wrong: 0, pending: 2 });
+  });
+
+  it('a void game is excluded from the total and from the final check; splits still reported', () => {
+    const sum = weekSummary(gs, [e, entry(2, 'Bob', { 1: 'away', 2: 'away', 3: 'away', 4: 'away' })]);
+    expect(sum.gamesTotal).toBe(3);
+    expect(sum.gamesFinal).toBe(1);
+    expect(sum.isFinal).toBe(false);
+    expect(sum.splits[2]).toEqual({ home: 1, away: 1 });
+    const done = weekSummary(
+      [fin(1, THU, 20, 10), game(2, SUN, { status: 'void' })],
+      [entry(1, 'Ann', { 1: 'home', 2: 'home' })],
+    );
+    expect(done).toMatchObject({ isFinal: true, gamesTotal: 1, gamesFinal: 1 });
+    expect(done.ranked[0]).toMatchObject({ correct: 1, wrong: 0, pending: 0 });
+  });
+
+  it('a void game is never the upset', () => {
+    const sum = weekSummary([game(1, THU, { status: 'void', winner: 'home' })], [entry(1, 'Ann', { 1: 'away' })]);
+    expect(sum.upset).toBeNull();
+  });
+
+  it('the frozen tiebreaker game id wins over the computed one', () => {
+    const g = [fin(1, SUN, 20, 10), fin(2, MON, 30, 20)];
+    const es = [entry(1, 'Ann', { 1: 'home', 2: 'home' }, 30), entry(2, 'Bob', { 1: 'home', 2: 'home' }, 50)];
+    expect(weekSummary(g, es).tiebreakerActualTotal).toBe(50);
+    const frozen = weekSummary(g, es, { tiebreakerGameId: 1 });
+    expect(frozen.tiebreakerGameId).toBe(1);
+    expect(frozen.tiebreakerActualTotal).toBe(30);
+    expect(frozen.ranked.map((r) => r.name)).toEqual(['Ann', 'Bob']);
+  });
+});

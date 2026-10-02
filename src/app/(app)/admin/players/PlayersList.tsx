@@ -131,7 +131,8 @@ function Player({ u, isMe }: { u: PlayerRow; isMe: boolean }) {
       {mode === 'remove' && (
         <div role="alertdialog" aria-label={`Remove ${u.firstName}`} className="mb-2 rounded-xl border border-wrong/50 bg-wrong/10 p-3">
           <p className="text-sm">
-            Remove {u.firstName} (@{u.username})? This deletes their account and all of their picks. It can&apos;t be undone.
+            Remove {u.firstName} (@{u.username})? They can no longer sign in and are dropped from the open week. Results
+            from past weeks stay as they were, and the username stays reserved.
           </p>
           <div className="mt-2 flex gap-2">
             <button

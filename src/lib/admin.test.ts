@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { entries, games, picks, sessions, users } from '@/db/schema';
-import { fromPtInputValue, removeUser, resetPin, setAdmin, setPaid, toPtInputValue } from './admin';
+import { fromPtInputValue, listUsers, removeUser, resetPin, setAdmin, setPaid, toPtInputValue } from './admin';
 import { createSession } from './auth';
 import { verifyPin } from './pin';
 import { freshDb, makeEntry, makeUser, makeWeek } from './testing/helpers';
@@ -73,22 +73,46 @@ describe('admin user/payment logic', () => {
     expect((await setAdmin(a.id, 999, true)).ok).toBe(false);
   });
 
-  it('removeUser cascades sessions, entries and picks; blocks self', async () => {
+  it('removeUser soft-deletes: keeps past entries, drops the open-week entry, ends sessions, reserves the username', async () => {
     const a = await makeUser('Ann');
     const b = await makeUser('Bob');
     const c = await makeUser('Cy');
+    const db = await getDb();
+    // A past (final) week where Bob played, plus the open week (weekId) where Bob and Cy entered.
+    const past = await makeWeek(
+      { weekNumber: 4, unlockAt: d('2026-09-29T07:00:00Z'), lockAt: d('2026-10-01T19:00:00Z') },
+      [{ status: 'final', winner: 'home', homeScore: 3, awayScore: 0 }],
+    );
+    await makeEntry(b.id, past.week.id, 30, true, { [past.games[0].id]: 'home' });
     const pm = { [gameIds[0]]: 'home', [gameIds[1]]: 'away' } as const;
     await makeEntry(b.id, weekId, 40, false, pm);
     await makeEntry(c.id, weekId, 41, false, pm);
     await createSession(b.id);
-    expect((await removeUser(a.id, a.id)).ok).toBe(false);
-    expect((await removeUser(a.id, b.id)).ok).toBe(true);
-    expect((await removeUser(a.id, b.id)).ok).toBe(false);
-    const db = await getDb();
-    expect(await db.select().from(users).where(eq(users.id, b.id))).toHaveLength(0);
+    const NOW = d('2026-10-07T12:00:00Z'); // week 5 is open
+    expect((await removeUser(a.id, a.id, NOW)).ok).toBe(false);
+    expect((await removeUser(a.id, b.id, NOW)).ok).toBe(true);
+    expect((await removeUser(a.id, b.id, NOW)).ok).toBe(false); // already removed
+    expect((await removeUser(a.id, 999, NOW)).ok).toBe(false);
+
+    const [row] = await db.select().from(users).where(eq(users.id, b.id));
+    expect(row.deactivatedAt).toEqual(NOW);
+    expect(row.username).toBe('bob'); // still reserved
     expect(await db.select().from(sessions)).toHaveLength(0);
-    expect((await db.select().from(entries)).map((e) => e.userId)).toEqual([c.id]);
-    expect(await db.select().from(picks)).toHaveLength(2);
-    expect(await db.select().from(games)).toHaveLength(2);
+    // Open-week entry (and its picks) gone; past-week entry and picks untouched; Cy untouched.
+    const all = await db.select().from(entries);
+    expect(all.map((e) => [e.userId, e.weekId]).sort()).toEqual([[b.id, past.week.id], [c.id, weekId]].sort());
+    expect(await db.select().from(picks)).toHaveLength(3);
+    expect(await db.select().from(games)).toHaveLength(3);
+    expect((await listUsers()).map((u) => u.firstName)).toEqual(['Ann', 'Cy']);
+    expect((await listUsers({ includeDeactivated: true })).map((u) => u.firstName)).toEqual(['Ann', 'Bob', 'Cy']);
+  });
+
+  it('removeUser leaves a locked week entry alone', async () => {
+    const a = await makeUser('Ann');
+    const b = await makeUser('Bob');
+    await makeEntry(b.id, weekId, 40, false, { [gameIds[0]]: 'home', [gameIds[1]]: 'away' });
+    expect((await removeUser(a.id, b.id, d('2026-10-09T12:00:00Z'))).ok).toBe(true); // after the lock
+    const db = await getDb();
+    expect(await db.select().from(entries)).toHaveLength(1);
   });
 });

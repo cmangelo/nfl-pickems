@@ -10,6 +10,8 @@ export interface PaymentEntry {
   username: string;
   submitted: string;
   paid: boolean;
+  /** "Edited by admin Ann · Thu 3:10 PM PT" when an admin changed this entry. */
+  edited: string | null;
 }
 
 export default function PaymentsList({ weekId, entries }: { weekId: number; entries: PaymentEntry[] }) {
@@ -62,6 +64,11 @@ export default function PaymentsList({ weekId, entries }: { weekId: number; entr
                     {e.firstName} <span className="font-normal text-muted">@{e.username}</span>
                   </div>
                   <div className="text-xs text-muted">Submitted {e.submitted}</div>
+                  {e.edited && (
+                    <div data-testid={`edited-${e.username}`} className="text-xs text-muted">
+                      {e.edited}
+                    </div>
+                  )}
                   <Link
                     href={`/admin/picks/${e.userId}?week=${weekId}`}
                     aria-label={`Edit picks for ${e.firstName}`}

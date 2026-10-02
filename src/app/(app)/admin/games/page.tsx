@@ -40,6 +40,7 @@ export default async function AdminGamesPage({ searchParams }: { searchParams: P
               awayScore: g.awayScore,
               homeScore: g.homeScore,
               final: g.status === 'final',
+              status: g.status,
               winner: g.winner,
               manual: g.manualOverride,
               kickoff: formatPT(g.kickoffAt, 'EEE h:mm a'),

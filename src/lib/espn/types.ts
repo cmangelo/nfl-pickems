@@ -1,4 +1,5 @@
-export type GameStatus = 'scheduled' | 'final';
+/** 'postponed' = ESPN reports postponed/canceled/suspended. ('void' is admin-only, never from ESPN.) */
+export type GameStatus = 'scheduled' | 'final' | 'postponed';
 export type Winner = 'home' | 'away' | 'tie';
 
 export interface ScoreboardGame {

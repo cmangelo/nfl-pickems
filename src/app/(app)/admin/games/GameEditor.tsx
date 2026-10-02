@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { clearOverrideAction, overrideGameAction } from '../actions';
+import { clearOverrideAction, overrideGameAction, voidGameAction } from '../actions';
 
 export interface AdminGame {
   id: number;
@@ -10,6 +10,7 @@ export interface AdminGame {
   awayScore: number | null;
   homeScore: number | null;
   final: boolean;
+  status: 'scheduled' | 'final' | 'postponed' | 'void';
   winner: 'home' | 'away' | 'tie' | null;
   manual: boolean;
   kickoff: string;
@@ -36,7 +37,11 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
 
   const line = g.final
     ? `${g.away} ${g.awayScore} @ ${g.home} ${g.homeScore} · Final`
-    : `${g.away} @ ${g.home} · ${g.kickoff}`;
+    : g.status === 'void'
+      ? `${g.away} @ ${g.home} · Void`
+      : g.status === 'postponed'
+        ? `${g.away} @ ${g.home} · Postponed`
+        : `${g.away} @ ${g.home} · ${g.kickoff}`;
 
   const onScore = (setter: (v: string) => void, other: string, isAway: boolean) => (v: string) => {
     const clean = v.replace(/\D/g, '').slice(0, 3);
@@ -51,6 +56,18 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
       if (!winner) return setError('Pick a winner.');
       try {
         const res = await overrideGameAction(g.id, Number(home), Number(away), winner);
+        if (res.ok) setEditing(false);
+        else setError(res.error);
+      } catch {
+        setError('Something went wrong. Please try again.');
+      }
+    });
+
+  const voidIt = () =>
+    start(async () => {
+      setError(null);
+      try {
+        const res = await voidGameAction(g.id);
         if (res.ok) setEditing(false);
         else setError(res.error);
       } catch {
@@ -111,7 +128,10 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
               <option value="tie">tie</option>
             </select>
           </label>
-          <p className="text-xs text-muted">Status: Final. Saving marks the game final and keeps it from being overwritten by syncs.</p>
+          <p className="text-xs text-muted">
+            Status: Final. Saving marks the game final and keeps it from being overwritten by syncs. Void game: counts for
+            nobody (e.g. cancelled); &quot;Clear override&quot; brings it back.
+          </p>
           <div className="flex gap-2">
             <button type="button" disabled={pending} onClick={save} className="h-10 rounded-lg bg-accent px-3 text-sm font-bold text-[#04201c] disabled:opacity-60">
               Save
@@ -119,6 +139,11 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
             <button type="button" disabled={pending} onClick={() => setEditing(false)} className={btn}>
               Cancel
             </button>
+            {g.status !== 'void' && (
+              <button type="button" disabled={pending} onClick={voidIt} className={btn}>
+                Void game
+              </button>
+            )}
             {g.manual && (
               <button type="button" disabled={pending} onClick={clear} className={btn}>
                 Clear override

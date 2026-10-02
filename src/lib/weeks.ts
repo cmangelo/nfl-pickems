@@ -1,6 +1,7 @@
-import { desc, eq, lte } from 'drizzle-orm';
+import { and, desc, eq, isNull, lte } from 'drizzle-orm';
 import { getDb } from '@/db';
-import { weeks } from '@/db/schema';
+import { games, weeks } from '@/db/schema';
+import { tiebreakerGame } from './scoring';
 import { weekLockAt, weekUnlockAt, type YMD } from './time';
 
 export type WeekState = 'hidden' | 'open' | 'locked' | 'final';
@@ -12,7 +13,7 @@ export interface WeekTimes {
 }
 
 export interface GameStatusLike {
-  status: 'scheduled' | 'final';
+  status: 'scheduled' | 'final' | 'postponed' | 'void';
 }
 
 export type WeekRow = typeof weeks.$inferSelect;
@@ -24,13 +25,14 @@ export function effectiveLock(week: Pick<WeekTimes, 'lockAt' | 'lockOverrideAt'>
 
 /**
  * hidden: before unlock. open: unlock <= now < lock. locked: after lock, some game not final.
- * final: now >= lock AND every game is final (a week with no games is never final).
+ * final: now >= lock AND every game is final or void (a week with no games is never final).
+ * A postponed game keeps the week locked until it is played or voided.
  */
 export function weekState(week: WeekTimes, games: GameStatusLike[], now: Date): WeekState {
   const t = now.getTime();
   if (t < week.unlockAt.getTime()) return 'hidden';
   if (t < effectiveLock(week).getTime()) return 'open';
-  return games.length > 0 && games.every((g) => g.status === 'final') ? 'final' : 'locked';
+  return games.length > 0 && games.every((g) => g.status === 'final' || g.status === 'void') ? 'final' : 'locked';
 }
 
 function addDays(ymd: YMD, days: number): YMD {
@@ -55,9 +57,59 @@ export function defaultUnlockAt(tuesday: YMD): Date {
 
 // ---------- DB ----------
 
-export async function setWeekLockOverride(weekId: number, at: Date | null): Promise<void> {
+export type LockResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Sets (or with null clears) the admin lock override. A lock later than the week's first kickoff is
+ * refused: picks must never stay open once a game has started. Changing the lock also drops the
+ * frozen tiebreaker game so it is recomputed at the new lock.
+ */
+export async function setWeekLockOverride(weekId: number, at: Date | null): Promise<LockResult> {
   const db = await getDb();
-  await db.update(weeks).set({ lockOverrideAt: at }).where(eq(weeks.id, weekId));
+  const [week] = await db.select({ id: weeks.id }).from(weeks).where(eq(weeks.id, weekId));
+  if (!week) return { ok: false, error: 'Week not found.' };
+  if (at) {
+    const rows = await db.select({ kickoffAt: games.kickoffAt }).from(games).where(eq(games.weekId, weekId));
+    if (rows.length > 0) {
+      const first = rows.reduce((a, b) => (b.kickoffAt < a.kickoffAt ? b : a)).kickoffAt;
+      if (at.getTime() > first.getTime()) {
+        return { ok: false, error: "The lock can't be later than the week's first kickoff." };
+      }
+    }
+  }
+  await db.update(weeks).set({ lockOverrideAt: at, tiebreakerGameId: null }).where(eq(weeks.id, weekId));
+  return { ok: true };
+}
+
+/**
+ * The week's tiebreaker game. Before the lock it is computed live from the games; once
+ * now >= the effective lock it is persisted (weeks.tiebreaker_game_id) the first time it is asked
+ * for and the stored game is used from then on, so a later flex/reschedule can't change it.
+ */
+export async function resolveTiebreakerGame<T extends { id: number; kickoffAt: Date }>(
+  week: WeekRow,
+  weekGames: T[],
+  now: Date,
+): Promise<T | null> {
+  const locked = now.getTime() >= effectiveLock(week).getTime();
+  if (!locked) return tiebreakerGame(weekGames);
+  const stored = week.tiebreakerGameId == null ? undefined : weekGames.find((g) => g.id === week.tiebreakerGameId);
+  if (stored) return stored;
+  const computed = tiebreakerGame(weekGames);
+  if (computed) {
+    const db = await getDb();
+    // Only fill when empty (or stale: the stored game is no longer in this week).
+    await db
+      .update(weeks)
+      .set({ tiebreakerGameId: computed.id })
+      .where(
+        week.tiebreakerGameId == null
+          ? and(eq(weeks.id, week.id), isNull(weeks.tiebreakerGameId))
+          : and(eq(weeks.id, week.id), eq(weeks.tiebreakerGameId, week.tiebreakerGameId)),
+      );
+    week.tiebreakerGameId = computed.id;
+  }
+  return computed;
 }
 
 /** The latest week whose unlock <= now, or null if none has opened yet. */

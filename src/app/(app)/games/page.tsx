@@ -4,12 +4,14 @@ import { requireUser } from '@/lib/auth';
 import { getEntry, listEntries } from '@/lib/picks';
 import type { Side } from '@/lib/scoring';
 import { getSelectedWeek, type GameRow } from '@/lib/selected-week';
-import { maybeRefresh } from '@/lib/sync';
+import { refreshWithBudget } from '@/lib/sync';
 import { formatPT, now as getNow } from '@/lib/time';
 import { effectiveLock } from '@/lib/weeks';
 import { loadWeekSummary } from '@/lib/week-data';
 
 function statusText(g: GameRow): string {
+  if (g.status === 'void') return 'Void';
+  if (g.status === 'postponed') return 'Postponed';
   if (g.status !== 'final' || g.winner === null) return formatPT(g.kickoffAt, "EEE h:mm a 'PT'");
   return g.winner === 'tie' ? 'Tie' : 'Final';
 }
@@ -20,7 +22,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
   const t = await getNow();
   let sel = await getSelectedWeek(weekParam, t);
   if (sel.state === 'locked') {
-    await maybeRefresh(t);
+    await refreshWithBudget(t);
     sel = await getSelectedWeek(weekParam, t);
   }
   const { week, games, state } = sel;
@@ -42,7 +44,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
     );
   }
 
-  const summary = await loadWeekSummary(week.id, games);
+  const summary = await loadWeekSummary(week, games, t);
   const mine = await getEntry(user.id, week.id); // the viewer's own side, even when unpaid
   const counted = summary.ranked.length;
 
@@ -91,9 +93,15 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
             </div>
           );
         };
+        const isVoid = g.status === 'void';
         const awayPct = total === 0 ? 0 : (split.away / total) * 100;
         return (
-          <div key={g.id} data-testid={`game-card-${g.id}`} className="rounded-xl border border-border bg-surface p-3">
+          <div
+            key={g.id}
+            data-testid={`game-card-${g.id}`}
+            data-void={isVoid}
+            className={`rounded-xl border border-border bg-surface p-3 ${isVoid ? 'opacity-60' : ''}`}
+          >
             <div className="mb-2 flex justify-between text-xs text-muted">
               <span data-testid={`game-status-${g.id}`}>{statusText(g)}</span>
               <span>{g.awayTeam} @ {g.homeTeam}</span>
@@ -108,8 +116,8 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
               data-testid={`split-bar-${g.id}`}
               className="mt-2 flex h-2 overflow-hidden rounded-full bg-surface-2"
             >
-              <div className="bg-accent" style={{ width: `${awayPct}%` }} />
-              <div className="bg-accent-bright/40" style={{ width: `${total === 0 ? 0 : 100 - awayPct}%` }} />
+              <div className={isVoid ? 'bg-muted/40' : 'bg-accent'} style={{ width: `${awayPct}%` }} />
+              <div className={isVoid ? 'bg-muted/20' : 'bg-accent-bright/40'} style={{ width: `${total === 0 ? 0 : 100 - awayPct}%` }} />
             </div>
           </div>
         );

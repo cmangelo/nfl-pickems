@@ -47,3 +47,14 @@ export function safeFrom(from: string | string[] | null | undefined): string {
 }
 
 export const NO_GAMES_MESSAGE = "No games yet — the season schedule hasn't been loaded.";
+
+/** Audit line for an entry an admin edited on the player's behalf: "Edited by admin Ann · Thu 3:10 PM PT". */
+export function adminEditLabel(editedByName: string | null, editedAt: Date | null): string | null {
+  if (!editedAt) return null;
+  return `Edited by admin ${editedByName ?? 'unknown'} · ${formatPT(editedAt, "EEE h:mm a 'PT'")}`;
+}
+
+/** "Postponed" / "Void" for games that aren't going to be scored normally; null otherwise. */
+export function gameStatusLabel(status: 'scheduled' | 'final' | 'postponed' | 'void'): string | null {
+  return status === 'postponed' ? 'Postponed' : status === 'void' ? 'Void' : null;
+}

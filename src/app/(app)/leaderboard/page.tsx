@@ -3,11 +3,10 @@ import RevealedCard from '@/components/RevealedCard';
 import { requireUser } from '@/lib/auth';
 import { formatUpdatedAgo, joinNames, upsetHeadline, upsetRightText, upsetWrongText, winnerBanner } from '@/lib/leaderboard-view';
 import { listEntries } from '@/lib/picks';
-import { tiebreakerGame } from '@/lib/scoring';
 import { getSelectedWeek } from '@/lib/selected-week';
-import { getLastSyncedAt, maybeRefresh } from '@/lib/sync';
+import { getLastSyncedAt, refreshWithBudget } from '@/lib/sync';
 import { formatPT, now as getNow } from '@/lib/time';
-import { effectiveLock } from '@/lib/weeks';
+import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
 import { loadWeekSummary } from '@/lib/week-data';
 import { NotCounted, RankedTable } from './RankedTable';
 import RefreshButton from './RefreshButton';
@@ -18,7 +17,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const t = await getNow();
   let sel = await getSelectedWeek(weekParam, t);
   if (sel.state === 'locked') {
-    await maybeRefresh(t); // refresh-on-view: throttled, never throws
+    await refreshWithBudget(t); // refresh-on-view: throttled, time-boxed, never throws
     sel = await getSelectedWeek(weekParam, t);
   }
   const { week, games, state } = sel;
@@ -45,8 +44,8 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
     );
   }
 
-  const summary = await loadWeekSummary(week.id, games);
-  const tb = tiebreakerGame(games);
+  const summary = await loadWeekSummary(week, games, t);
+  const tb = await resolveTiebreakerGame(week, games, t);
   const tbName = tb ? `${tb.awayTeam} @ ${tb.homeTeam}` : 'the tiebreaker game';
   const tbFinal = summary.tiebreakerActualTotal !== null;
   const gamesText = `${summary.gamesFinal} of ${summary.gamesTotal} games final`;

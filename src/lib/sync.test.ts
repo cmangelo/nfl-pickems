@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { games } from '@/db/schema';
-import { adminOverrideGame, clearOverride, getLastSyncedAt, maybeRefresh, syncScores } from './sync';
+import { adminOverrideGame, clearOverride, getLastSyncedAt, maybeRefresh, refreshWithBudget, syncScores, voidGame } from './sync';
+import type { ScoreboardGame } from './espn';
 import { freshDb, makeWeek, sbGame, StubEspnClient } from './testing/helpers';
 
 process.env.DB_DRIVER = 'memory';
@@ -58,6 +59,34 @@ describe('syncScores', () => {
     });
     await syncScores({ client, now: NOW });
     expect(await game(cur.games[0].id)).toMatchObject({ homeScore: 30, awayScore: 3, winner: 'home', manualOverride: true });
+  });
+
+  it('also syncs older visible weeks that are not final, but not final ones (late results)', async () => {
+    const W3 = { weekNumber: 3, unlockAt: d('2026-09-22T07:00:00Z'), lockAt: d('2026-09-24T19:00:00Z') };
+    const W2 = { weekNumber: 2, unlockAt: d('2026-09-15T07:00:00Z'), lockAt: d('2026-09-17T19:00:00Z') };
+    const w2 = await makeWeek(W2, [{ espnId: 'a', status: 'final', winner: 'home', homeScore: 1, awayScore: 0 }]);
+    const w3 = await makeWeek(W3, [{ espnId: 'b', status: 'postponed' }]); // rescheduled game, still unplayed
+    await makeWeek(W4, [{ espnId: 'p1', status: 'final', winner: 'home', homeScore: 1, awayScore: 0 }]);
+    await makeWeek(W5, [{ espnId: 'c1' }]);
+    const client = new StubEspnClient({
+      '2026-3': [sbGame('b', '2026-10-11T17:00:00Z', { homeScore: 14, awayScore: 10, status: 'final', winner: 'home' })],
+    });
+    const out = await syncScores({ client, now: NOW });
+    expect(out.weeksSynced).toEqual([5, 3]); // week 4 and week 2 are final, week 3 is not
+    expect(await game(w3.games[0].id)).toMatchObject({ status: 'final', winner: 'home', homeScore: 14 });
+    expect(await game(w2.games[0].id)).toMatchObject({ status: 'final' });
+    expect((await syncScores({ client, now: NOW })).weeksSynced).toEqual([5]); // week 3 is final now
+  });
+
+  it('records a postponed game and later its result', async () => {
+    const cur = await makeWeek(W5, [{ espnId: 'c1' }]);
+    await syncScores({ client: new StubEspnClient({ '2026-5': [sbGame('c1', '2026-10-11T17:00:00Z', { status: 'postponed' })] }), now: NOW });
+    expect(await game(cur.games[0].id)).toMatchObject({ status: 'postponed', winner: null });
+    await syncScores({
+      client: new StubEspnClient({ '2026-5': [sbGame('c1', '2026-10-20T01:15:00Z', { homeScore: 3, awayScore: 0, status: 'final', winner: 'home' })] }),
+      now: NOW,
+    });
+    expect(await game(cur.games[0].id)).toMatchObject({ status: 'final', winner: 'home' });
   });
 
   it('does nothing but record sync when there is no current week', async () => {
@@ -120,5 +149,53 @@ describe('maybeRefresh', () => {
     expect(bad.calls).toBe(1); // backed off
     await maybeRefresh(d('2026-10-12T20:01:30Z'), bad);
     expect(bad.calls).toBe(2);
+  });
+});
+
+describe('voidGame', () => {
+  beforeEach(async () => {
+    await freshDb();
+  });
+
+  it('voids a game, survives syncs, and Clear override restores it', async () => {
+    const cur = await makeWeek(W5, [{ espnId: 'c1' }]);
+    const id = cur.games[0].id;
+    await voidGame(id);
+    expect(await game(id)).toMatchObject({ status: 'void', manualOverride: true, winner: null, homeScore: null });
+    const client = new StubEspnClient({
+      '2026-5': [sbGame('c1', '2026-10-11T17:00:00Z', { homeScore: 9, awayScore: 3, status: 'final', winner: 'home' })],
+    });
+    await syncScores({ client, now: NOW });
+    expect(await game(id)).toMatchObject({ status: 'void' });
+    await clearOverride(id);
+    expect(await game(id)).toMatchObject({ status: 'scheduled', manualOverride: false });
+    await expect(voidGame(99999)).rejects.toThrow();
+  });
+});
+
+describe('refreshWithBudget (M2)', () => {
+  beforeEach(async () => {
+    await freshDb();
+    await makeWeek(W5, [{ espnId: 'c1' }]);
+  });
+
+  it('returns within the budget when ESPN hangs; the sync can still finish in the background', async () => {
+    let release: (v: ScoreboardGame[]) => void = () => {};
+    const hung = {
+      getScoreboard: () => new Promise<ScoreboardGame[]>((resolve) => (release = resolve)),
+    };
+    const t0 = Date.now();
+    const r = await refreshWithBudget(NOW, 60, hung);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    expect(r).toMatchObject({ ran: false, timedOut: true });
+    // Let the abandoned sync complete so it doesn't leak into other tests.
+    release([]);
+    await vi.waitFor(async () => expect(await getLastSyncedAt()).toEqual(NOW));
+  });
+
+  it('returns the normal result when the sync is fast', async () => {
+    const r = await refreshWithBudget(NOW, 2000, new StubEspnClient());
+    expect(r).toMatchObject({ ran: true, lastSyncedAt: NOW });
+    expect(r.timedOut).toBeUndefined();
   });
 });

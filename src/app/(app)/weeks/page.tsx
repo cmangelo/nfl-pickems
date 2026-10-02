@@ -3,7 +3,7 @@ import NoWeeks from '@/components/NoWeeks';
 import WeekStatePill from '@/components/WeekStatePill';
 import { requireUser } from '@/lib/auth';
 import { getSelectedWeek } from '@/lib/selected-week';
-import { maybeRefresh } from '@/lib/sync';
+import { refreshWithBudget } from '@/lib/sync';
 import { now as getNow } from '@/lib/time';
 import { loadWeekSummary } from '@/lib/week-data';
 import { rankLabel, safeFrom } from '@/lib/week-view';
@@ -18,14 +18,14 @@ export default async function WeeksPage({
   const t = await getNow();
   let sel = await getSelectedWeek(sp.week, t);
   if (sel.visibleWeeks.some((v) => v.state === 'locked')) {
-    await maybeRefresh(t); // refresh-on-view: throttled, never throws
+    await refreshWithBudget(t); // refresh-on-view: throttled, time-boxed, never throws
     sel = await getSelectedWeek(sp.week, t);
   }
   const from = safeFrom(sp.from);
   if (sel.visibleWeeks.length === 0) return <NoWeeks />;
 
   const rows = await Promise.all(
-    sel.visibleWeeks.map(async (v) => ({ v, summary: await loadWeekSummary(v.week.id, v.games) })),
+    sel.visibleWeeks.map(async (v) => ({ v, summary: await loadWeekSummary(v.week, v.games, t) })),
   );
 
   return (
@@ -33,7 +33,7 @@ export default async function WeeksPage({
       <h1 className="mb-3 text-2xl font-bold">Choose week</h1>
       <ul className="overflow-hidden rounded-xl border border-border bg-surface">
         {rows.map(({ v, summary }) => {
-          const { week, state, games } = v;
+          const { week, state } = v;
           const mine = [...summary.ranked, ...summary.notCounted].find((e) => e.userId === user.id);
           const ranked = summary.ranked.find((e) => e.userId === user.id);
           const won = state === 'final' && summary.winners.some((e) => e.userId === user.id);
@@ -41,7 +41,7 @@ export default async function WeeksPage({
           if (!mine) you = state === 'open' ? "You haven't picked yet" : "You didn't play";
           else if (state === 'open') you = 'You: picks submitted';
           else if (state === 'final') {
-            you = `You: ${mine.correct}/${games.length}${ranked ? ` · ${rankLabel(ranked.rank, ranked.tied)}` : ''}`;
+            you = `You: ${mine.correct}/${summary.gamesTotal}${ranked ? ` · ${rankLabel(ranked.rank, ranked.tied)}` : ''}`;
           } else {
             you = `You: ${mine.correct} so far${ranked ? ` · ${rankLabel(ranked.rank, ranked.tied)}` : ''}`;
           }

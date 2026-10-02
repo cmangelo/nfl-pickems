@@ -49,7 +49,7 @@ export async function setResult(
   request: APIRequestContext,
   gameId: number,
   winner: Result,
-  scores?: { homeScore: number; awayScore: number },
+  scores?: { homeScore?: number; awayScore?: number; status?: 'postponed' | 'void' },
 ) {
   const res = await request.post('/api/test/set-result', { data: { gameId, winner, ...scores } });
   expect(res.ok()).toBeTruthy();

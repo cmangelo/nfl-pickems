@@ -11,14 +11,27 @@ export const REGULAR_SEASON_LAST_WEEK = 18;
  * Upserts ESPN games into a week, keyed by espn_id.
  * Always refreshes kickoff time, teams and week (flexes, Week 18 TBDs).
  * Scores / status / winner are refreshed only for games without manual_override.
+ * An existing game is never moved into a week of a different season (skipped with a warning); moving
+ * between weeks of the same season (a flex) is allowed and logged.
  */
 export async function upsertScoreboardGames(db: Db, weekId: number, incoming: ScoreboardGame[]): Promise<number> {
   if (incoming.length === 0) return 0;
+  const [target] = await db.select({ season: weeks.season, weekNumber: weeks.weekNumber }).from(weeks).where(eq(weeks.id, weekId));
+  if (!target) throw new Error(`week ${weekId} not found`);
   const existing = await db
-    .select({ id: games.id, espnId: games.espnId, manualOverride: games.manualOverride })
+    .select({
+      id: games.id,
+      espnId: games.espnId,
+      manualOverride: games.manualOverride,
+      weekId: games.weekId,
+      season: weeks.season,
+      weekNumber: weeks.weekNumber,
+    })
     .from(games)
+    .innerJoin(weeks, eq(weeks.id, games.weekId))
     .where(inArray(games.espnId, incoming.map((g) => g.espnId)));
   const byEspn = new Map(existing.map((g) => [g.espnId, g]));
+  let count = 0;
   for (const g of incoming) {
     const row = byEspn.get(g.espnId);
     const base = { weekId, kickoffAt: g.kickoffAt, homeTeam: g.homeTeam, awayTeam: g.awayTeam };
@@ -26,13 +39,23 @@ export async function upsertScoreboardGames(db: Db, weekId: number, incoming: Sc
     if (!row) {
       await db.insert(games).values({ espnId: g.espnId, ...base, ...results });
     } else {
+      if (row.weekId !== weekId) {
+        if (row.season !== target.season) {
+          console.warn(
+            `ESPN game ${g.espnId} belongs to season ${row.season} week ${row.weekNumber}; refusing to move it to season ${target.season} week ${target.weekNumber}`,
+          );
+          continue;
+        }
+        console.warn(`ESPN game ${g.espnId} moved from week ${row.weekNumber} to week ${target.weekNumber} (season ${target.season})`);
+      }
       await db
         .update(games)
         .set(row.manualOverride ? base : { ...base, ...results })
         .where(eq(games.id, row.id));
     }
+    count++;
   }
-  return incoming.length;
+  return count;
 }
 
 export interface ImportResult {
@@ -42,7 +65,8 @@ export interface ImportResult {
 
 /**
  * Imports regular-season weeks fromWeek..18. Weeks with no games on the feed are skipped.
- * Week unlock/lock come from the Tuesday (PT) on or before the first kickoff.
+ * Week unlock/lock come from the Tuesday (PT) on or before the first kickoff; the default lock is
+ * min(Thu 12 PM PT / Thanksgiving 9 AM PT, earliest kickoff of the week).
  * An existing week keeps its admin lock override.
  */
 export async function importSeason({
@@ -61,7 +85,10 @@ export async function importSeason({
     if (sb.length === 0) continue;
     const first = sb.reduce((a, b) => (b.kickoffAt < a.kickoffAt ? b : a)).kickoffAt;
     const tuesday = weekTuesday(first);
-    const times = { unlockAt: defaultUnlockAt(tuesday), lockAt: defaultLockAt(tuesday) };
+    // The default lock (Thu 12 PT / Thanksgiving 9 AM) can never be later than the first kickoff
+    // (e.g. a Wednesday game): picks must close before any game starts.
+    const lockAt = new Date(Math.min(defaultLockAt(tuesday).getTime(), first.getTime()));
+    const times = { unlockAt: defaultUnlockAt(tuesday), lockAt };
     const [week] = await db
       .insert(weeks)
       .values({ season, weekNumber, ...times })
