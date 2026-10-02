@@ -5,24 +5,37 @@ process.env.DB_DRIVER = 'memory';
 
 let clock = new Date('2026-10-07T20:00:00Z');
 vi.mock('@/lib/time', () => ({ now: async () => clock, isTestMode: () => false }));
+vi.mock('./pin', async (orig) => {
+  const real = await orig<typeof import('./pin')>();
+  return { ...real, verifyPin: vi.fn(real.verifyPin) };
+});
 
 type Auth = typeof import('./auth');
 let auth: Auth;
 let dbMod: typeof import('@/db');
 let schema: typeof import('@/db/schema');
+let pinMod: typeof import('./pin');
 
 beforeAll(async () => {
   auth = await import('./auth');
   dbMod = await import('@/db');
   schema = await import('@/db/schema');
+  pinMod = await import('./pin');
 });
 
 beforeEach(async () => {
   clock = new Date('2026-10-07T20:00:00Z');
+  vi.mocked(pinMod.verifyPin).mockClear();
   await dbMod.resetDb();
 });
 
-const minutes = (n: number) => new Date(clock.getTime() + n * 60000);
+const minutes = (n: number) => new Date(new Date('2026-10-07T20:00:00Z').getTime() + n * 60000);
+
+async function userRow(username: string) {
+  const db = await dbMod.getDb();
+  const [row] = await db.select().from(schema.users).where(eq(schema.users.username, username));
+  return row;
+}
 
 describe('signUp validation', () => {
   it('creates a user with lowercase username and trimmed name', async () => {
@@ -81,7 +94,7 @@ describe('login and lockout', () => {
     expect(await auth.login('dan', '1234')).toEqual({ ok: false, error: 'Too many attempts. Try again in 15 min.' });
     clock = minutes(10);
     expect(await auth.login('dan', '1234')).toEqual({ ok: false, error: 'Too many attempts. Try again in 5 min.' });
-    clock = minutes(6); // 16 min after the lock started
+    clock = minutes(16);
     expect((await auth.login('dan', '1234')).ok).toBe(true);
   });
 
@@ -93,12 +106,97 @@ describe('login and lockout', () => {
     expect((await auth.login('dan', '1234')).ok).toBe(true); // 4 more fails did not lock
   });
 
-  it('after an expired lock, a wrong PIN counts as the first failure again', async () => {
+  it('an expired lock does not reset the counter: the next lock comes after 5 more failures and lasts twice as long', async () => {
     await auth.signUp('Dan', 'dan', '1234');
     for (let i = 0; i < 5; i++) await auth.login('dan', '0000');
     clock = minutes(16);
     for (let i = 0; i < 4; i++) expect(await auth.login('dan', '0000')).toEqual({ ok: false, error: 'Wrong username or PIN.' });
+    expect(await auth.login('dan', '0000')).toEqual({ ok: false, error: 'Too many attempts. Try again in 30 min.' });
+    expect(await auth.login('dan', '1234')).toEqual({ ok: false, error: 'Too many attempts. Try again in 30 min.' });
+    clock = minutes(16 + 31);
     expect((await auth.login('dan', '1234')).ok).toBe(true);
+  });
+
+  it('a correct PIN after an expired lock logs in and resets the counter and lock', async () => {
+    await auth.signUp('Dan', 'dan', '1234');
+    for (let i = 0; i < 5; i++) await auth.login('dan', '0000');
+    clock = minutes(16);
+    expect((await auth.login('dan', '1234')).ok).toBe(true);
+    expect(await userRow('dan')).toMatchObject({ failedAttempts: 0, lockedUntil: null });
+    // back to the first-lockout duration
+    for (let i = 0; i < 4; i++) await auth.login('dan', '0000');
+    expect(await auth.login('dan', '0000')).toEqual({ ok: false, error: 'Too many attempts. Try again in 15 min.' });
+  });
+
+  it('lock durations escalate 15 min, 30 min, 1 hr, 2 hr ... and cap at 24 hr', async () => {
+    await auth.signUp('Dan', 'dan', '1234');
+    const mins = [15, 30, 60, 120, 240, 480, 960, 1440, 1440, 1440];
+    for (let round = 0; round < mins.length; round++) {
+      const t0 = clock.getTime();
+      for (let i = 0; i < 4; i++) expect((await auth.login('dan', '0000')).ok).toBe(false);
+      const res = await auth.login('dan', '0000');
+      expect(res.ok).toBe(false);
+      const row = await userRow('dan');
+      expect(row.lockedUntil?.getTime(), `round ${round}`).toBe(t0 + mins[round] * 60000);
+      expect(res).toEqual({
+        ok: false,
+        error: `Too many attempts. Try again in ${mins[round] >= 60 ? `${mins[round] / 60} hr` : `${mins[round]} min`}.`,
+      });
+      clock = new Date(t0 + (mins[round] + 1) * 60000);
+    }
+  });
+
+  it('lockoutMinutes and formatLockMessage', () => {
+    expect([5, 10, 15, 20, 25, 30, 35, 40, 45, 5000].map(auth.lockoutMinutes)).toEqual([15, 30, 60, 120, 240, 480, 960, 1440, 1440, 1440]);
+    expect(auth.formatLockMessage(0.2)).toBe('Too many attempts. Try again in 1 min.');
+    expect(auth.formatLockMessage(59)).toBe('Too many attempts. Try again in 59 min.');
+    expect(auth.formatLockMessage(60)).toBe('Too many attempts. Try again in 1 hr.');
+    expect(auth.formatLockMessage(121)).toBe('Too many attempts. Try again in 3 hr.');
+  });
+
+  it('200 parallel wrong guesses: at most 5 reach scrypt, the account ends locked', async () => {
+    await auth.signUp('Dan', 'dan', '1234');
+    const verify = vi.mocked(pinMod.verifyPin);
+    verify.mockClear();
+    const results = await Promise.all(Array.from({ length: 200 }, (_, i) => auth.login('dan', String(i % 9).repeat(4))));
+    expect(verify.mock.calls.length).toBe(5);
+    expect(results.every((r) => !r.ok)).toBe(true);
+    expect(results.filter((r) => !r.ok && r.error.startsWith('Too many attempts')).length).toBeGreaterThanOrEqual(195);
+    const row = await userRow('dan');
+    expect(row.failedAttempts).toBe(5);
+    expect(row.lockedUntil?.getTime()).toBe(minutes(15).getTime());
+  });
+
+  it('a correct PIN in a parallel batch after the 5th failure is rejected', async () => {
+    await auth.signUp('Dan', 'dan', '1234');
+    for (let i = 0; i < 4; i++) await auth.login('dan', '0000');
+    const results = await Promise.all([
+      auth.login('dan', '0000'), // the 5th failure
+      ...Array.from({ length: 20 }, () => auth.login('dan', '1234')), // the real PIN, in flight at the same time
+    ]);
+    expect(results.every((r) => !r.ok)).toBe(true);
+    expect(await userRow('dan')).toMatchObject({ failedAttempts: 5 });
+    expect(await auth.login('dan', '1234')).toEqual({ ok: false, error: 'Too many attempts. Try again in 15 min.' });
+  });
+
+  it('parallel guesses do not run scrypt while locked, and escalation holds across waves', async () => {
+    await auth.signUp('Dan', 'dan', '1234');
+    await Promise.all(Array.from({ length: 50 }, () => auth.login('dan', '0000')));
+    clock = minutes(16);
+    const verify = vi.mocked(pinMod.verifyPin);
+    verify.mockClear();
+    await Promise.all(Array.from({ length: 50 }, () => auth.login('dan', '0000')));
+    expect(verify.mock.calls.length).toBe(5);
+    const row = await userRow('dan');
+    expect(row.failedAttempts).toBe(10);
+    expect(row.lockedUntil?.getTime()).toBe(minutes(16 + 30).getTime());
+  });
+
+  it('unknown usernames still run a scrypt verify (equal timing) and give the generic error', async () => {
+    const verify = vi.mocked(pinMod.verifyPin);
+    verify.mockClear();
+    expect(await auth.login('nobody', '1234')).toEqual({ ok: false, error: 'Wrong username or PIN.' });
+    expect(verify).toHaveBeenCalledTimes(1);
   });
 });
 

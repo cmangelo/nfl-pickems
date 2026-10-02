@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { users } from '@/db/schema';
+import { requireAdmin } from '@/lib/auth';
 import NoWeeks from '@/components/NoWeeks';
 import { getEntry } from '@/lib/picks';
 import { tiebreakerGame } from '@/lib/scoring';
@@ -19,6 +20,7 @@ export default async function AdminEditPicksPage({
   params: Promise<{ userId: string }>;
   searchParams: Promise<{ week?: string | string[] }>;
 }) {
+  await requireAdmin();
   const { userId: rawId } = await params;
   const { week: weekParam } = await searchParams;
   if (!/^\d+$/.test(rawId)) notFound();

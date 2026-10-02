@@ -1,10 +1,12 @@
 import NoWeeks from '@/components/NoWeeks';
+import { requireAdmin } from '@/lib/auth';
 import { listEntries } from '@/lib/picks';
 import { getSelectedWeek } from '@/lib/selected-week';
 import { formatPT } from '@/lib/time';
 import PaymentsList from './PaymentsList';
 
 export default async function AdminPaymentsPage({ searchParams }: { searchParams: Promise<{ week?: string | string[] }> }) {
+  await requireAdmin(); // layouts are skipped on partial renders: every page enforces auth itself
   const { week: weekParam } = await searchParams;
   const { week } = await getSelectedWeek(weekParam);
   if (!week) return <NoWeeks />;

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { bearerMatches } from '@/lib/bearer';
 import { getEspnClient } from '@/lib/espn';
 import { findStartWeek, importSeason, seasonOf } from '@/lib/schedule';
 import { syncScores } from '@/lib/sync';
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic';
 /** Nightly job (vercel.json). Vercel sends `Authorization: Bearer ${CRON_SECRET}`. Fails closed if the secret is unset. */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!secret || !bearerMatches(req.headers.get('authorization'), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   const t = await now();

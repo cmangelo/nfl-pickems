@@ -7,6 +7,7 @@ import { weeks } from '@/db/schema';
 import * as admin from '@/lib/admin';
 import { requireAdmin } from '@/lib/auth';
 import { getEspnClient } from '@/lib/espn';
+import { isId } from '@/lib/validate';
 import { submitPicks } from '@/lib/picks';
 import { importSeason } from '@/lib/schedule';
 import type { Side } from '@/lib/scoring';
@@ -17,6 +18,7 @@ import { setWeekLockOverride } from '@/lib/weeks';
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
 const bad = (error: string): ActionResult => ({ ok: false, error });
+const INVALID = 'Invalid request.';
 
 function refresh() {
   revalidatePath('/admin', 'layout');
@@ -27,6 +29,7 @@ function refresh() {
 
 export async function setPaidAction(userId: number, weekId: number, paid: boolean): Promise<ActionResult> {
   await requireAdmin();
+  if (!isId(userId) || !isId(weekId)) return bad(INVALID);
   if (!(await admin.setPaid(Number(userId), Number(weekId), !!paid))) return bad('Entry not found.');
   refresh();
   return { ok: true };
@@ -34,6 +37,7 @@ export async function setPaidAction(userId: number, weekId: number, paid: boolea
 
 export async function syncNowAction(weekId: number): Promise<ActionResult> {
   await requireAdmin();
+  if (!isId(weekId)) return bad(INVALID);
   try {
     const db = await getDb();
     const [week] = await db.select().from(weeks).where(eq(weeks.id, Number(weekId)));
@@ -57,6 +61,7 @@ export async function syncNowAction(weekId: number): Promise<ActionResult> {
 /** `ptValue` is a datetime-local string in Pacific Time; null resets to the default lock. */
 export async function setLockAction(weekId: number, ptValue: string | null): Promise<ActionResult> {
   await requireAdmin();
+  if (!isId(weekId)) return bad(INVALID);
   let at: Date | null = null;
   if (ptValue !== null) {
     at = admin.fromPtInputValue(String(ptValue));
@@ -74,6 +79,7 @@ export async function overrideGameAction(
   winner: 'home' | 'away' | 'tie',
 ): Promise<ActionResult> {
   await requireAdmin();
+  if (!isId(gameId)) return bad(INVALID);
   if (winner !== 'home' && winner !== 'away' && winner !== 'tie') return bad('Pick a winner.');
   try {
     await adminOverrideGame(Number(gameId), { homeScore: Number(homeScore), awayScore: Number(awayScore), winner });
@@ -86,6 +92,7 @@ export async function overrideGameAction(
 
 export async function clearOverrideAction(gameId: number): Promise<ActionResult> {
   await requireAdmin();
+  if (!isId(gameId)) return bad(INVALID);
   await clearOverride(Number(gameId));
   refresh();
   return { ok: true };
@@ -98,6 +105,7 @@ export async function adminSubmitPicksAction(
   tiebreaker: number,
 ): Promise<ActionResult> {
   await requireAdmin();
+  if (!isId(userId) || !isId(weekId) || !picks || typeof picks !== 'object') return bad(INVALID);
   const res = await submitPicks(
     Number(userId),
     Number(weekId),
@@ -111,12 +119,14 @@ export async function adminSubmitPicksAction(
 
 export async function resetPinAction(userId: number, pin: string): Promise<ActionResult> {
   await requireAdmin();
+  if (!isId(userId)) return bad(INVALID);
   const res = await admin.resetPin(Number(userId), String(pin));
   return res.ok ? { ok: true } : bad(res.error);
 }
 
 export async function setAdminAction(userId: number, isAdmin: boolean): Promise<ActionResult> {
   const me = await requireAdmin();
+  if (!isId(userId)) return bad(INVALID);
   const res = await admin.setAdmin(me.id, Number(userId), !!isAdmin);
   if (!res.ok) return bad(res.error);
   refresh();
@@ -125,6 +135,7 @@ export async function setAdminAction(userId: number, isAdmin: boolean): Promise<
 
 export async function removeUserAction(userId: number): Promise<ActionResult> {
   const me = await requireAdmin();
+  if (!isId(userId)) return bad(INVALID);
   const res = await admin.removeUser(me.id, Number(userId));
   if (!res.ok) return bad(res.error);
   refresh();
