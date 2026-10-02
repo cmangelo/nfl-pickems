@@ -6,10 +6,32 @@ export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 export type DriverName = 'pglite' | 'memory' | 'neon';
 
+/**
+ * The Postgres connection string. DATABASE_URL is preferred; POSTGRES_URL and any
+ * prefixed variant (e.g. STORAGE_DATABASE_URL, which Vercel creates when a storage
+ * integration is connected with a custom prefix) are accepted as fallbacks.
+ */
+export function databaseUrl(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  if (env.DATABASE_URL) return env.DATABASE_URL;
+  if (env.POSTGRES_URL) return env.POSTGRES_URL;
+  const key = Object.keys(env)
+    .sort()
+    .find((k) => /^[A-Z0-9_]+_(DATABASE_URL|POSTGRES_URL)$/.test(k) && env[k]);
+  return key ? env[key] : undefined;
+}
+
 export function resolveDriver(env: NodeJS.ProcessEnv = process.env): DriverName {
   const d = env.DB_DRIVER;
   if (d === 'pglite' || d === 'memory' || d === 'neon') return d;
-  return env.DATABASE_URL ? 'neon' : 'pglite';
+  if (databaseUrl(env)) return 'neon';
+  // The embedded database needs a writable disk; a Vercel deployment has none.
+  if (env.VERCEL) {
+    throw new Error(
+      'No database URL found on this Vercel deployment. Connect the Neon database to this project ' +
+        '(Vercel > Storage) for this environment so DATABASE_URL is set, then redeploy.',
+    );
+  }
+  return 'pglite';
 }
 
 const MIGRATIONS_FOLDER = path.join(process.cwd(), 'drizzle');
@@ -23,7 +45,7 @@ async function create(): Promise<Db> {
   if (driver === 'neon') {
     const { neon } = await import('@neondatabase/serverless');
     const { drizzle } = await import('drizzle-orm/neon-http');
-    const url = process.env.DATABASE_URL;
+    const url = databaseUrl();
     if (!url) throw new Error('DATABASE_URL is required for the neon driver');
     return drizzle(neon(url), { schema }) as unknown as Db;
   }

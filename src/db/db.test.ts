@@ -28,3 +28,29 @@ describe('db (pglite memory + drizzle migrations)', () => {
     expect((rows as unknown as { rows: { n: number }[] }).rows[0].n).toBe(1);
   });
 });
+
+const env = (e: Record<string, string>) => e as unknown as NodeJS.ProcessEnv;
+
+describe('database URL and driver resolution', () => {
+  it('prefers DATABASE_URL, then POSTGRES_URL, then a prefixed *_DATABASE_URL', async () => {
+    const { databaseUrl } = await import('./index');
+    expect(databaseUrl(env({ DATABASE_URL: 'a', POSTGRES_URL: 'b' }))).toBe('a');
+    expect(databaseUrl(env({ POSTGRES_URL: 'b' }))).toBe('b');
+    expect(databaseUrl(env({ STORAGE_DATABASE_URL: 'c' }))).toBe('c');
+    expect(databaseUrl(env({ NEON_POSTGRES_URL: 'd' }))).toBe('d');
+    expect(databaseUrl(env({ DATABASE_URL_UNPOOLED: 'x' }))).toBeUndefined();
+    expect(databaseUrl(env({}))).toBeUndefined();
+  });
+
+  it('uses neon when any database URL is present', async () => {
+    const { resolveDriver } = await import('./index');
+    expect(resolveDriver(env({ STORAGE_DATABASE_URL: 'postgres://x' }))).toBe('neon');
+    expect(resolveDriver(env({}))).toBe('pglite');
+  });
+
+  it('refuses the embedded database on Vercel with a clear message', async () => {
+    const { resolveDriver } = await import('./index');
+    expect(() => resolveDriver(env({ VERCEL: '1' }))).toThrow(/No database URL found/);
+    expect(resolveDriver(env({ VERCEL: '1', DATABASE_URL: 'postgres://x' }))).toBe('neon');
+  });
+});
