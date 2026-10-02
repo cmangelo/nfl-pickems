@@ -93,11 +93,31 @@ test('team logos show next to abbreviations, served locally in tests (never the 
   await expect(logo).toHaveAttribute('src', '/api/test/logo/500-dark/kc.png');
   await expect.poll(() => logo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await expect(page.getByTestId(`pick-${gameIds[0]}-away`).getByTestId('team-logo')).toHaveAttribute('data-team', 'BUF');
-  // A selected pick has a light (amber) fill, so its logo switches to ESPN's standard, light-background variant.
+  // A selected pick is an amber outline with a faint tint (dark background), so its logo stays the dark variant.
   await btn.click();
-  await expect(btn.getByTestId('team-logo')).toHaveAttribute('src', '/api/test/logo/500/kc.png');
+  await expect(btn).toHaveAttribute('aria-pressed', 'true');
+  await expect(btn.getByTestId('team-logo')).toHaveAttribute('src', '/api/test/logo/500-dark/kc.png');
   await expect(page.getByTestId(`pick-${gameIds[0]}-away`).getByTestId('team-logo')).toHaveAttribute('src', '/api/test/logo/500-dark/buf.png');
   expect(external).toEqual([]);
+});
+
+test('@smoke a selected pick is an amber outline with a faint tint, matching the locked view', async ({ page, context, request }) => {
+  const { gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  await setNow(context, WED);
+  await loginAs(page, 'admin');
+  await page.goto('/picks');
+
+  const home = page.getByTestId(`pick-${gameIds[0]}-home`);
+  await home.click();
+  await expect(home).toHaveAttribute('aria-pressed', 'true');
+  const look = await home.evaluate((b) => {
+    const cs = getComputedStyle(b);
+    return { border: cs.borderTopColor, bg: cs.backgroundColor, color: cs.color };
+  });
+  expect(look.border).toBe('rgb(251, 191, 36)'); // --accent outline
+  expect(look.color).toBe('rgb(252, 211, 77)'); // --accent-bright text
+  expect(look.bg).not.toBe('rgb(251, 191, 36)'); // no solid amber fill
+  expect(look.bg).toMatch(/rgba\(251, 191, 36, 0\.15\)|oklab|color-mix/); // faint amber tint
 });
 
 test('games tab: live score, quarter and clock; halftime; final score; live data never scores', async ({ page, context, request }) => {

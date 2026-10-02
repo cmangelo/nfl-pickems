@@ -87,7 +87,8 @@ export default function PicksForm({
 
   const teamClass = (on: boolean) =>
     `flex h-[50px] flex-1 items-center justify-center gap-2 rounded-[10px] border-[1.5px] text-xl font-bold ${
-      on ? 'border-accent bg-accent text-on-accent' : 'border-border bg-surface-2 text-fg'
+      // Same outline + tint as a pending pick in LockedPicks, which turns green/red once the game is final.
+      on ? 'border-accent bg-accent/15 text-accent-bright' : 'border-border bg-surface-2 text-fg'
     }`;
 
   return (
@@ -116,7 +117,7 @@ export default function PicksForm({
                   onClick={() => choose(g.id, 'away')}
                   className={teamClass(picks[g.id] === 'away')}
                 >
-                  <TeamLogo key={picks[g.id] === 'away' ? 'light' : 'dark'} abbr={g.away} size={26} onLight={picks[g.id] === 'away'} />
+                  <TeamLogo abbr={g.away} size={26} />
                   <span>{g.away}</span>
                 </button>
                 <span aria-hidden="true" className="text-sm text-muted">@</span>
@@ -127,7 +128,7 @@ export default function PicksForm({
                   onClick={() => choose(g.id, 'home')}
                   className={teamClass(picks[g.id] === 'home')}
                 >
-                  <TeamLogo key={picks[g.id] === 'home' ? 'light' : 'dark'} abbr={g.home} size={26} onLight={picks[g.id] === 'home'} />
+                  <TeamLogo abbr={g.home} size={26} />
                   <span>{g.home}</span>
                 </button>
               </div>
