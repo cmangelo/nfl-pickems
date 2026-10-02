@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { setLockAction, syncNowAction } from '../actions';
 
 const btn = 'h-10 rounded-lg border-[1.5px] border-border bg-surface-2 px-3 text-sm font-semibold text-fg disabled:opacity-60';
-const primary = 'h-10 rounded-lg bg-accent px-3 text-sm font-bold text-[#04201c] disabled:opacity-60';
+const primary = 'h-10 rounded-lg bg-accent px-3 text-sm font-bold text-on-accent disabled:opacity-60';
 
 export function SyncPanel({ weekId, lastSynced }: { weekId: number; lastSynced: string }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);

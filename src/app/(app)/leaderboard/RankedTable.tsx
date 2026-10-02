@@ -47,7 +47,7 @@ export function RankedTable({
               <span className="flex items-center gap-2 truncate">
                 <span data-testid="player-name" className="truncate font-semibold">{e.name}</span>
                 {e.userId === viewerId && (
-                  <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-bg">YOU</span>
+                  <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-on-accent">YOU</span>
                 )}
               </span>
               <span data-testid="tb-guess" className="text-right text-sm text-muted">

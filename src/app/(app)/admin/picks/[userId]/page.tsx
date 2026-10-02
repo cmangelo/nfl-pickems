@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
@@ -49,8 +50,9 @@ export default async function AdminEditPicksPage({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href={`/admin/payments?week=${week.id}`} className="text-sm font-semibold text-accent-bright">
-          ← Back to Admin
+        <Link href={`/admin/payments?week=${week.id}`} className="inline-flex items-center gap-0.5 text-sm font-semibold text-accent-bright">
+          <ChevronLeft size={16} strokeWidth={2.5} aria-hidden="true" />
+          Back to Admin
         </Link>
         <h1 className="mt-1 text-2xl font-bold">
           Edit picks: {user.firstName} <span className="text-base font-normal text-muted">@{user.username}</span>

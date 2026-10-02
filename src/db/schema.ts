@@ -69,6 +69,16 @@ export const games = pgTable(
       .default('scheduled'),
     winner: text('winner', { enum: ['home', 'away', 'tie'] }),
     manualOverride: boolean('manual_override').notNull().default(false),
+    /**
+     * In-game display only (score, quarter, clock while ESPN reports the game in progress; null otherwise).
+     * Never used for scoring: results come from home_score/away_score/winner once the game is final.
+     */
+    liveHomeScore: integer('live_home_score'),
+    liveAwayScore: integer('live_away_score'),
+    livePeriod: integer('live_period'),
+    liveClock: text('live_clock'),
+    /** ESPN status name while live, e.g. STATUS_IN_PROGRESS, STATUS_HALFTIME, STATUS_END_PERIOD. */
+    liveStatus: text('live_status'),
   },
   (t) => [index('games_week_idx').on(t.weekId)],
 );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import TeamLogo from '@/components/TeamLogo';
 import type { Side } from '@/lib/scoring';
 import { submitPicksAction, type SubmitState } from './actions';
 
@@ -85,8 +86,8 @@ export default function PicksForm({
   };
 
   const teamClass = (on: boolean) =>
-    `h-[50px] flex-1 rounded-[10px] border-[1.5px] text-xl font-bold ${
-      on ? 'border-accent bg-accent text-[#04201c]' : 'border-border bg-surface-2 text-fg'
+    `flex h-[50px] flex-1 items-center justify-center gap-2 rounded-[10px] border-[1.5px] text-xl font-bold ${
+      on ? 'border-accent bg-accent text-on-accent' : 'border-border bg-surface-2 text-fg'
     }`;
 
   return (
@@ -115,7 +116,8 @@ export default function PicksForm({
                   onClick={() => choose(g.id, 'away')}
                   className={teamClass(picks[g.id] === 'away')}
                 >
-                  {g.away}
+                  <TeamLogo abbr={g.away} size={26} />
+                  <span>{g.away}</span>
                 </button>
                 <span aria-hidden="true" className="text-sm text-muted">@</span>
                 <button
@@ -125,7 +127,8 @@ export default function PicksForm({
                   onClick={() => choose(g.id, 'home')}
                   className={teamClass(picks[g.id] === 'home')}
                 >
-                  {g.home}
+                  <TeamLogo abbr={g.home} size={26} />
+                  <span>{g.home}</span>
                 </button>
               </div>
             </div>
@@ -166,7 +169,7 @@ export default function PicksForm({
       <button
         type="submit"
         disabled={!ready || pending}
-        className="h-[54px] w-full rounded-xl bg-accent text-lg font-bold text-[#04201c] disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-muted"
+        className="h-[54px] w-full rounded-xl bg-accent text-lg font-bold text-on-accent disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-muted"
       >
         {label}
       </button>

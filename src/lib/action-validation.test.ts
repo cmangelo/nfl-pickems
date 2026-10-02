@@ -24,7 +24,11 @@ describe('admin actions reject malformed ids with a validation error (no DB erro
   let a: typeof import('@/app/(app)/admin/actions');
   beforeAll(async () => {
     a = await import('@/app/(app)/admin/actions');
-  });
+    // Cold-start the in-memory DB (pglite boot + migrations) here, not inside a 5 s test, so a loaded
+    // parallel run cannot time out the first test that touches it.
+    const { getDb } = await import('@/db');
+    await getDb();
+  }, 60_000);
 
   it('every id-taking action', async () => {
     for (const bad of BAD) {

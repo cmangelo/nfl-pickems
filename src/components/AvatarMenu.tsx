@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { KeyRound, LogOut } from 'lucide-react';
 import { logoutAction } from '@/app/login/actions';
 
 export default function AvatarMenu({ initial }: { initial: string }) {
@@ -24,7 +25,7 @@ export default function AvatarMenu({ initial }: { initial: string }) {
     };
   }, [open]);
 
-  const item = 'block w-full px-4 py-3 text-left text-base text-fg hover:bg-surface-2';
+  const item = 'flex w-full items-center gap-3 px-4 py-3 text-left text-base text-fg hover:bg-surface-2';
   return (
     <div ref={ref} className="relative ml-auto">
       <button
@@ -45,10 +46,12 @@ export default function AvatarMenu({ initial }: { initial: string }) {
           className="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
         >
           <Link role="menuitem" href="/account/pin" className={item} onClick={() => setOpen(false)}>
+            <KeyRound size={18} className="text-muted" aria-hidden="true" />
             Change PIN
           </Link>
           <form action={logoutAction}>
             <button role="menuitem" type="submit" className={item}>
+              <LogOut size={18} className="text-muted" aria-hidden="true" />
               Log out
             </button>
           </form>

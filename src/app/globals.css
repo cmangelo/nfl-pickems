@@ -7,8 +7,9 @@
   --border: #2a2f3a;
   --text: #e6e8ec;
   --muted: #8b93a3;
-  --accent: #14b8a6;
-  --accent-bright: #2dd4bf;
+  --accent: #5e5ce6;
+  --accent-bright: #7d7aff;
+  --on-accent: #ffffff;
   --correct: #22c55e;
   --wrong: #ef4444;
 }
@@ -22,6 +23,7 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-bright: var(--accent-bright);
+  --color-on-accent: var(--on-accent);
   --color-correct: var(--correct);
   --color-wrong: var(--wrong);
 }

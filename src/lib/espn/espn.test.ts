@@ -88,6 +88,22 @@ describe('statuses and malformed events (M7, L5)', () => {
     }
   });
 
+  it('captures live score, period and clock while in progress (state "in"), without a result', () => {
+    const raw = ev('x', { status: 'STATUS_IN_PROGRESS' });
+    Object.assign(raw.competitions[0].status, { period: 3, displayClock: '4:12' });
+    (raw.competitions[0].status.type as Record<string, unknown>).state = 'in';
+    const [g] = parseScoreboard({ events: [raw] });
+    expect(g).toMatchObject({ status: 'scheduled', homeScore: null, awayScore: null, winner: null });
+    expect(g.live).toEqual({ homeScore: 24, awayScore: 20, period: 3, clock: '4:12', status: 'STATUS_IN_PROGRESS' });
+  });
+
+  it('no live state before kickoff, after the final, or when postponed', () => {
+    const pre = parseScoreboard({ events: [ev('a')] })[0];
+    const fin = parseScoreboard({ events: [ev('b', { status: 'STATUS_FINAL', completed: true })] })[0];
+    const ppd = parseScoreboard({ events: [ev('c', { status: 'STATUS_POSTPONED' })] })[0];
+    for (const g of [pre, fin, ppd]) expect(g.live).toBeNull();
+  });
+
   it('a completed event with missing scores stays scheduled', () => {
     const [g] = parseScoreboard({
       events: [ev('x', { status: 'STATUS_FINAL', completed: true, home: { score: undefined }, away: { score: '' } })],

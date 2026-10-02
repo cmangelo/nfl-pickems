@@ -1,5 +1,7 @@
 import NoWeeks from '@/components/NoWeeks';
 import RevealedCard from '@/components/RevealedCard';
+import TeamLogo from '@/components/TeamLogo';
+import { liveLabel } from '@/lib/game-view';
 import { requireUser } from '@/lib/auth';
 import { getEntry, listEntries } from '@/lib/picks';
 import type { Side } from '@/lib/scoring';
@@ -64,8 +66,15 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
         const total = split.home + split.away;
         const myPick: Side | undefined = mine?.picks[g.id];
         const settled = g.status === 'final' && g.winner !== null;
-        const side = (s: Side, team: string, score: number | null) => {
+        const live = liveLabel(g);
+        // Final score once settled; ESPN's in-game score while live (display only, never scored).
+        const scoreOf = (s: Side) =>
+          settled ? (s === 'home' ? g.homeScore : g.awayScore) : live ? (s === 'home' ? g.liveHomeScore : g.liveAwayScore) : null;
+        const side = (s: Side, team: string) => {
           const won = settled && g.winner === s;
+          const score = scoreOf(s);
+          const other = scoreOf(s === 'home' ? 'away' : 'home');
+          const trailing = score !== null && other !== null && score < other;
           const count = split[s];
           return (
             <div
@@ -76,16 +85,24 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
                 won ? 'border-correct/60 bg-correct/10' : 'border-border bg-surface-2'
               }`}
             >
-              <div className={`flex items-center gap-1.5 text-lg font-bold ${s === 'home' ? 'justify-end' : ''}`}>
+              <div className={`flex items-center gap-2 text-lg font-bold ${s === 'home' ? 'flex-row-reverse' : ''}`}>
+                <TeamLogo abbr={team} size={28} />
                 <span>{team}</span>
-                {settled && score !== null && <span className="text-sm font-semibold">{score}</span>}
+                {score !== null && (
+                  <span
+                    data-testid={`score-${g.id}-${s}`}
+                    className={`text-2xl tabular-nums ${s === 'home' ? 'mr-auto' : 'ml-auto'} ${trailing ? 'text-muted' : ''}`}
+                  >
+                    {score}
+                  </span>
+                )}
                 {won && <span className="sr-only">(winner)</span>}
               </div>
               <div className="text-sm">{count} picked {team}</div>
               {myPick === s && (
                 <span
                   data-testid={`your-pick-${g.id}`}
-                  className="mt-1 inline-block rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase text-bg"
+                  className="mt-1 inline-block rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase text-on-accent"
                 >
                   Your pick
                 </span>
@@ -103,12 +120,20 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
             className={`rounded-xl border border-border bg-surface p-3 ${isVoid ? 'opacity-60' : ''}`}
           >
             <div className="mb-2 flex justify-between text-xs text-muted">
-              <span data-testid={`game-status-${g.id}`}>{statusText(g)}</span>
+              {live ? (
+                <span data-testid={`game-status-${g.id}`} data-live="true" className="inline-flex items-center gap-1.5 font-bold text-[#ff9c9c]">
+                  <span aria-hidden="true" className="size-[7px] animate-pulse rounded-full bg-current" />
+                  <span className="sr-only">Live: </span>
+                  {live}
+                </span>
+              ) : (
+                <span data-testid={`game-status-${g.id}`}>{statusText(g)}</span>
+              )}
               <span>{g.awayTeam} @ {g.homeTeam}</span>
             </div>
             <div className="flex items-stretch gap-2">
-              {side('away', g.awayTeam, g.awayScore)}
-              {side('home', g.homeTeam, g.homeScore)}
+              {side('away', g.awayTeam)}
+              {side('home', g.homeTeam)}
             </div>
             <div
               role="img"

@@ -84,7 +84,7 @@ export default function PaymentsList({ weekId, entries }: { weekId: number; entr
                   aria-label={`${e.firstName} paid`}
                   onClick={() => toggle(e.userId)}
                   className={`h-11 min-w-[88px] rounded-full border-[1.5px] px-4 text-sm font-bold ${
-                    on ? 'border-accent bg-accent text-[#04201c]' : 'border-border bg-surface-2 text-muted'
+                    on ? 'border-accent bg-accent text-on-accent' : 'border-border bg-surface-2 text-muted'
                   }`}
                 >
                   {on ? 'Paid' : 'Unpaid'}
