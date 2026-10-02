@@ -20,8 +20,7 @@ export type SubmitError =
   | 'incomplete'
   | 'invalid_pick'
   | 'invalid_tiebreaker'
-  | 'game_started'
-  | 'own_entry_locked';
+  | 'game_started';
 
 export type SubmitResult =
   | { ok: true; entryId: number }
@@ -55,8 +54,8 @@ const fail = (error: SubmitError, message: string): SubmitResult => ({ ok: false
  * Non-admin saves may not add or change the pick for a game that has already kicked off.
  * `paid` is never touched here (defaults to false on create).
  *
- * `actorId` is the acting admin (asAdmin only): an admin may not edit their OWN entry after the lock,
- * and an edit of someone else's entry is recorded on the entry (edited_by_admin_id / admin_edited_at).
+ * `actorId` is the acting admin (asAdmin only). An edit of someone else's entry, or of the admin's own
+ * entry after the lock, is recorded on the entry (edited_by_admin_id / admin_edited_at).
  * The entry upsert and the picks upsert are one atomic statement.
  */
 export async function submitPicks(
@@ -74,9 +73,6 @@ export async function submitPicks(
     .where(eq(games.weekId, weekId));
 
   if (!asAdmin && weekState(week, weekGames, now) !== 'open') return fail('week_not_open', 'Picks are closed for this week.');
-  if (asAdmin && actorId === userId && now.getTime() >= effectiveLock(week).getTime()) {
-    return fail('own_entry_locked', "You can't edit your own picks after the lock.");
-  }
 
   const { tiebreaker } = input;
   if (!Number.isInteger(tiebreaker) || tiebreaker < 0 || tiebreaker > MAX_TIEBREAKER) {
@@ -102,7 +98,9 @@ export async function submitPicks(
 
   await resolveTiebreakerGame(week, weekGames, now); // freezes the tiebreaker game once locked
 
-  const audit = asAdmin && actorId !== undefined && actorId !== userId;
+  // An admin's own pre-lock save is an ordinary entry; after the lock it is flagged like any admin edit.
+  const audit =
+    asAdmin && actorId !== undefined && (actorId !== userId || now.getTime() >= effectiveLock(week).getTime());
   const ts = now.toISOString();
   const adminId = audit ? actorId : null;
   const adminAt = audit ? ts : null;

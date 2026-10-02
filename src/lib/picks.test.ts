@@ -181,13 +181,13 @@ describe('submitPicks: atomic write and admin audit (M4, M6)', () => {
     expect((await getEntry(ann, weekId))?.adminEditedAt).toEqual(t);
   });
 
-  it('an admin editing their own entry is not an "admin edit", and is refused after the lock', async () => {
+  it('an admin may edit their own entry after the lock; only the post-lock edit is flagged', async () => {
     const own = await submitPicks(boss, weekId, { picks: both('home'), tiebreaker: 1 }, { now: OPEN, asAdmin: true, actorId: boss });
     expect(own.ok).toBe(true);
     expect((await getEntry(boss, weekId))?.adminEditedAt).toBeNull();
-    const late = await submitPicks(boss, weekId, { picks: both('away'), tiebreaker: 1 }, { now: LOCKED, asAdmin: true, actorId: boss });
-    expect(late).toMatchObject({ ok: false, error: 'own_entry_locked', message: "You can't edit your own picks after the lock." });
-    expect((await getEntry(boss, weekId))?.picks).toEqual(both('home'));
+    const late = await submitPicks(boss, weekId, { picks: both('away'), tiebreaker: 2 }, { now: LOCKED, asAdmin: true, actorId: boss });
+    expect(late.ok).toBe(true);
+    expect(await getEntry(boss, weekId)).toMatchObject({ picks: both('away'), tiebreaker: 2, editedByAdminId: boss, adminEditedAt: LOCKED });
     // Editing someone else after the lock is fine.
     expect((await submitPicks(ann, weekId, { picks: both('away'), tiebreaker: 1 }, { now: LOCKED, asAdmin: true, actorId: boss })).ok).toBe(true);
   });

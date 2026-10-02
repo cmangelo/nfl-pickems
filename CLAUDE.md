@@ -88,7 +88,7 @@ Dark, amber accent. CSS variables in `src/app/globals.css`: `--bg #0f1115`, `--a
 - ESPN responses are validated (`parseScoreboardFor`/`validateScoreboardMeta`, throws `EspnMismatchError`) against the requested season, season type (default 2) and week; the fixture client goes through the same path. `RealEspnClient` has a 4 s fetch timeout. A malformed event is skipped with `console.warn`.
 - `upsertScoreboardGames` never moves a game into a different season's week; same-season moves (flex) are allowed and logged.
 - Lock rules: `importSeason` sets default lock = min(Thu 12 PT / Thanksgiving 9 AM PT, earliest kickoff). `setWeekLockOverride` returns `{ok}|{ok:false,error}` and refuses a lock later than the first kickoff. Non-admin `submitPicks` can't add/change a pick for a game with kickoff <= now (`game_started`).
-- `submitPicks` writes the entry + picks in ONE CTE statement (atomic on neon-http and pglite). `asAdmin` + `actorId`: edits of another player's entry set `entries.edited_by_admin_id/admin_edited_at` (shown by `adminEditLabel`); an admin can't edit their own entry after the lock (`own_entry_locked`). Admin edit-picks page hides other players' picks while the week is open.
+- `submitPicks` writes the entry + picks in ONE CTE statement (atomic on neon-http and pglite). `asAdmin` + `actorId`: edits of another player's entry, or of the admin's own entry after the lock, set `entries.edited_by_admin_id/admin_edited_at` (shown by `adminEditLabel`). Admin edit-picks page hides other players' picks while the week is open.
 - `resolveTiebreakerGame(week, games, now)` (weeks.ts): live before the lock, then persisted in `weeks.tiebreaker_game_id` and used from then on. `weekSummary(..., { tiebreakerGameId })`; `loadWeekSummary(week, games, now)` wires it.
 - `refreshWithBudget(now, ms = 2500)` (sync.ts): pages use it instead of `maybeRefresh` so a slow ESPN never blocks rendering. `syncScores` syncs the current week plus every visible non-final week of that season (`force` also the previous week).
 - `removeUser(actorId, userId, at)` soft-deletes (`users.deactivated_at`), deletes sessions and the open week's entry; past/locked entries stay. `listUsers({ includeDeactivated })`. Login/signup in `auth.ts` must reject deactivated users (wired separately).
@@ -97,7 +97,7 @@ Dark, amber accent. CSS variables in `src/app/globals.css`: `--bg #0f1115`, `--a
 - `weeks.ts`: `weekState` (hidden/open/locked/final), `effectiveLock`, `defaultLockAt` (Thanksgiving = Thu 9 AM PT), `getCurrentWeek`, `getVisibleWeeks`, `setWeekLockOverride`.
 - `schedule.ts`: `importSeason` (upsert weeks/games by espn_id; respects manual overrides). Script: `npm run db:import-schedule -- --season 2026 --from N`.
 - `sync.ts`: `syncScores`, `maybeRefresh` (5-min throttle, never throws), `adminOverrideGame`, `clearOverride`. Cron: `GET /api/cron/sync` with `Authorization: Bearer $CRON_SECRET`.
-- `picks.ts`: `submitPicks` (complete form only; error codes `week_not_found|week_not_open|incomplete|invalid_pick|invalid_tiebreaker|game_started|own_entry_locked`), `getEntry`, `listEntries`.
+- `picks.ts`: `submitPicks` (complete form only; error codes `week_not_found|week_not_open|incomplete|invalid_pick|invalid_tiebreaker|game_started`), `getEntry`, `listEntries`.
 - `scoring.ts` (pure): `scoreEntry`, `rankEntries`, `weekSummary`, `tiebreakerGame`. Compute on the fly; no stats table.
 - `admin.ts`: `setPaid`, `resetPin`, `setAdmin`/`removeUser` (both refuse to act on self), `toPtInputValue`/`fromPtInputValue` (datetime-local in PT <-> UTC), `listUsers`.
 

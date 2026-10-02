@@ -110,13 +110,18 @@ test('M6: an admin cannot peek at others\' picks before the lock, edits are audi
   await page.getByRole('button', { name: /pick|enter|submit|update/i }).last().click();
   await expect(page.getByRole('status')).toHaveText('Picks saved for Ann.');
 
-  // After the lock: audit line in Payments, Ann's My Picks and the drill-down; the admin's own edit is refused.
+  // After the lock: audit line in Payments, Ann's My Picks and the drill-down; the admin can still edit their own picks.
   await setNow(context, FRI);
   await page.goto(`/admin/payments?week=${weekId}`);
   await expect(page.getByTestId('edited-ann')).toHaveText('Edited by admin Admin · Wed 1:00 PM PT');
   await expect(page.getByTestId('edited-admin')).toHaveCount(0);
   await page.goto(`/admin/picks/1?week=${weekId}`);
-  await expect(page.getByTestId('own-locked-notice')).toHaveText("You can't edit your own picks after the lock.");
+  await expect(page.getByTestId(`pick-${gameIds[0]}-away`)).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId(`pick-${gameIds[0]}-home`).click();
+  await page.getByRole('button', { name: /pick|enter|submit|update/i }).last().click();
+  await expect(page.getByRole('status')).toHaveText('Picks saved for Admin.');
+  await page.reload();
+  await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'true');
   await page.goto(`/admin/picks/2?week=${weekId}`); // Ann: allowed after the lock, with her real picks shown
   await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'true');
 
@@ -126,8 +131,9 @@ test('M6: an admin cannot peek at others\' picks before the lock, edits are audi
   await loginAs(page, 'bob');
   await page.goto(`/leaderboard/player/2?week=${weekId}`);
   await expect(page.getByTestId('admin-edited')).toHaveText('Edited by admin Admin · Wed 1:00 PM PT');
+  // The admin's own post-lock change is flagged publicly, like any admin edit.
   await page.goto(`/leaderboard/player/1?week=${weekId}`);
-  await expect(page.getByTestId('admin-edited')).toHaveCount(0);
+  await expect(page.getByTestId('admin-edited')).toHaveText('Edited by admin Admin · Fri 1:00 PM PT');
 });
 
 test('M7: postponed games stay pending; a voided game counts for nobody and the week can finish', async ({ page, context, request }) => {

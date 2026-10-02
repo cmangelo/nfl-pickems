@@ -36,7 +36,6 @@ export default async function AdminEditPicksPage({
   // While the week is open another player's picks stay hidden from the admin: blank form, replace-only.
   const hidden = state === 'open' && user.id !== me.id;
   const entry = hidden ? null : await getEntry(userId, week.id);
-  const ownLocked = user.id === me.id && state !== 'open';
   const tb = await resolveTiebreakerGame(week, games, now);
   const tbLabel = tb
     ? `Total points in ${tb.awayTeam} @ ${tb.homeTeam} (${formatPT(tb.kickoffAt, 'EEE h:mm a')})`
@@ -67,24 +66,18 @@ export default async function AdminEditPicksPage({
           </p>
         )}
       </div>
-      {ownLocked ? (
-        <p data-testid="own-locked-notice" className="rounded-xl border border-border bg-surface p-4 text-center text-muted">
-          You can&apos;t edit your own picks after the lock.
-        </p>
-      ) : (
-        <PicksForm
-          key={`${week.id}-${userId}`}
-          weekId={week.id}
-          days={days}
-          initialPicks={entry?.picks ?? {}}
-          initialTiebreaker={entry?.tiebreaker ?? null}
-          tiebreakerLabel={tbLabel}
-          lockShort=""
-          hasEntry={!!entry}
-          savedMessage={`Picks saved for ${user.firstName}.`}
-          submitAction={adminSubmitPicksAction.bind(null, userId, week.id)}
-        />
-      )}
+      <PicksForm
+        key={`${week.id}-${userId}`}
+        weekId={week.id}
+        days={days}
+        initialPicks={entry?.picks ?? {}}
+        initialTiebreaker={entry?.tiebreaker ?? null}
+        tiebreakerLabel={tbLabel}
+        lockShort=""
+        hasEntry={!!entry}
+        savedMessage={`Picks saved for ${user.firstName}.`}
+        submitAction={adminSubmitPicksAction.bind(null, userId, week.id)}
+      />
     </div>
   );
 }
