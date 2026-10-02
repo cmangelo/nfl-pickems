@@ -6,7 +6,7 @@ const STYLES: Record<'open' | 'live' | 'final', string> = {
   final: 'bg-surface-2 text-[#c9cdd4]',
 };
 
-/** Open (teal) / Live (red dot, locked and in progress) / Final (neutral). Hidden weeks render nothing. */
+/** Open (accent) / Live (red dot, locked and in progress) / Final (neutral). Hidden weeks render nothing. */
 export default function WeekStatePill({ state, testId }: { state: WeekState; testId?: string }) {
   if (state === 'hidden') return null;
   const kind = state === 'open' ? 'open' : state === 'locked' ? 'live' : 'final';

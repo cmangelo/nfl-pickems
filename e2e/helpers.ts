@@ -55,6 +55,16 @@ export async function setResult(
   expect(res.ok()).toBeTruthy();
 }
 
+/** Puts a game in ESPN's in-progress display state (score/quarter/clock), or clears it with `null`. Never scores it. */
+export async function setLive(
+  request: APIRequestContext,
+  gameId: number,
+  live: { homeScore: number; awayScore: number; period: number; clock?: string; status?: string } | null,
+) {
+  const res = await request.post('/api/test/set-live', { data: live === null ? { gameId, live: null } : { gameId, ...live } });
+  expect(res.ok()).toBeTruthy();
+}
+
 /** Seeds one week from the ESPN fixture (2026 weeks 5, 6, 12). Same return shape as seedWeek. */
 export async function importFixtureWeek(request: APIRequestContext, week: number, season = 2026) {
   const res = await request.post(`/api/test/import-fixture-week?week=${week}&season=${season}`);

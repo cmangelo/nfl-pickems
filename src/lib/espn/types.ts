@@ -11,6 +11,18 @@ export interface ScoreboardGame {
   awayScore: number | null;
   status: GameStatus;
   winner: Winner | null;
+  /** Present only while ESPN reports the game in progress (state "in"); display only, never scored. */
+  live: LiveState | null;
+}
+
+export interface LiveState {
+  homeScore: number | null;
+  awayScore: number | null;
+  period: number | null;
+  /** ESPN displayClock, e.g. "4:12". */
+  clock: string | null;
+  /** ESPN status name, e.g. STATUS_IN_PROGRESS, STATUS_HALFTIME, STATUS_END_PERIOD. */
+  status: string;
 }
 
 export interface ScoreboardParams {

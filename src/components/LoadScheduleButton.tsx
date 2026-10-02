@@ -22,7 +22,7 @@ export default function LoadScheduleButton() {
         type="button"
         onClick={run}
         disabled={pending}
-        className="h-10 rounded-lg bg-accent px-3 text-sm font-bold text-[#04201c] disabled:opacity-60"
+        className="h-10 rounded-lg bg-accent px-3 text-sm font-bold text-on-accent disabled:opacity-60"
       >
         {pending ? 'Loading…' : 'Load season schedule from ESPN'}
       </button>

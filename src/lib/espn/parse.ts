@@ -1,4 +1,4 @@
-import type { ScoreboardGame, ScoreboardParams, Winner } from './types';
+import type { LiveState, ScoreboardGame, ScoreboardParams, Winner } from './types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -72,6 +72,20 @@ function parseEvent(ev: any): ScoreboardGame | null {
     else winner = homeScore === awayScore ? 'tie' : homeScore! > awayScore! ? 'home' : 'away';
   }
 
+  const status = completed ? 'final' : !flaggedComplete && POSTPONED.has(statusName) ? 'postponed' : 'scheduled';
+  let live: LiveState | null = null;
+  if (status === 'scheduled' && comp.status?.type?.state === 'in') {
+    const period = Number(comp.status?.period);
+    const clock = comp.status?.displayClock;
+    live = {
+      homeScore: rawHome,
+      awayScore: rawAway,
+      period: Number.isInteger(period) && period > 0 ? period : null,
+      clock: typeof clock === 'string' && clock ? clock : null,
+      status: typeof statusName === 'string' ? statusName : 'STATUS_IN_PROGRESS',
+    };
+  }
+
   return {
     espnId: String(ev.id),
     kickoffAt: kickoff,
@@ -79,8 +93,9 @@ function parseEvent(ev: any): ScoreboardGame | null {
     awayTeam,
     homeScore,
     awayScore,
-    status: completed ? 'final' : !flaggedComplete && POSTPONED.has(statusName) ? 'postponed' : 'scheduled',
+    status,
     winner,
+    live,
   };
 }
 

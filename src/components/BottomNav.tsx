@@ -2,48 +2,47 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { ListChecks, ShieldCheck, Trophy, Tv, type LucideIcon } from 'lucide-react';
 
-const ICONS: Record<string, string> = {
-  '/picks': 'M9 11l3 3 8-8M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9',
-  '/leaderboard': 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3',
-  '/games': 'M3 5h18v14H3zM12 5v14M3 12h18',
-  '/admin': 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z',
-};
-
+/**
+ * Floating, iOS-style tab bar: a translucent capsule hovering above the bottom edge (clear of the home
+ * indicator via safe-area-inset-bottom). The (app) layout pads <main> so content can scroll out from under it.
+ */
 export default function BottomNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const week = useSearchParams().get('week');
   const withWeek = (href: string) => (week ? `${href}?week=${encodeURIComponent(week)}` : href);
-  const tabs = [
-    { href: '/picks', label: 'My Picks' },
-    { href: '/leaderboard', label: 'Leaderboard' },
-    { href: '/games', label: 'Games' },
-    ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
+  const tabs: { href: string; label: string; Icon: LucideIcon }[] = [
+    { href: '/picks', label: 'My Picks', Icon: ListChecks },
+    { href: '/leaderboard', label: 'Leaderboard', Icon: Trophy },
+    { href: '/games', label: 'Games', Icon: Tv },
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin', Icon: ShieldCheck }] : []),
   ];
   return (
-    <nav
-      aria-label="Main"
-      className="sticky bottom-0 grid h-16 shrink-0 border-t border-border bg-bg"
-      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
-    >
-      {tabs.map((t) => {
-        const on = pathname === t.href || pathname.startsWith(t.href + '/');
-        return (
-          <Link
-            key={t.href}
-            href={withWeek(t.href)}
-            aria-current={on ? 'page' : undefined}
-            className={`flex flex-col items-center justify-center gap-[3px] text-xs font-semibold ${
-              on ? 'text-accent-bright' : 'text-muted'
-            }`}
-          >
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d={ICONS[t.href]} />
-            </svg>
-            {t.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <nav
+        aria-label="Main"
+        data-testid="bottom-nav"
+        className="pointer-events-auto mx-auto grid h-[62px] max-w-md gap-1 rounded-full border border-white/10 bg-surface/70 p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.55)] backdrop-blur-xl backdrop-saturate-150"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
+        {tabs.map(({ href, label, Icon }) => {
+          const on = pathname === href || pathname.startsWith(href + '/');
+          return (
+            <Link
+              key={href}
+              href={withWeek(href)}
+              aria-current={on ? 'page' : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-semibold transition-colors ${
+                on ? 'bg-white/10 text-accent-bright' : 'text-muted hover:text-fg'
+              }`}
+            >
+              <Icon size={22} strokeWidth={on ? 2.4 : 2} aria-hidden="true" />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

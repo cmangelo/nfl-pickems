@@ -1,3 +1,5 @@
+import { Check, X } from 'lucide-react';
+import TeamLogo from '@/components/TeamLogo';
 import type { GameRow } from '@/lib/selected-week';
 import type { EntryRecord } from '@/lib/picks';
 import { scoreEntry, type Side } from '@/lib/scoring';
@@ -21,11 +23,8 @@ const MARK_STYLE: Record<Mark, string> = {
 
 function MarkIcon({ mark }: { mark: Mark }) {
   if (mark === 'pending' || mark === 'void') return null;
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={mark === 'right' ? 'Correct' : 'Wrong'}>
-      <path d={mark === 'right' ? 'M5 12l5 5 9-10' : 'M6 6l12 12M18 6L6 18'} />
-    </svg>
-  );
+  const Icon = mark === 'right' ? Check : X;
+  return <Icon size={18} strokeWidth={3} role="img" aria-label={mark === 'right' ? 'Correct' : 'Wrong'} />;
 }
 
 export default function LockedPicks({
@@ -92,6 +91,7 @@ export default function LockedPicks({
               }`}
             >
               {on && <MarkIcon mark={mark} />}
+              <TeamLogo abbr={team} size={22} />
               <span>{team}</span>
               {settled && score !== null && <span className="text-sm font-semibold">{score}</span>}
             </div>

@@ -13,3 +13,12 @@ export function resolveWeekId(
   }
   return currentId;
 }
+
+const SAFE_FROM = /^\/(?:(?:picks|leaderboard|games|admin)(?:\/[a-z-]*)?|admin\/picks\/\d+|leaderboard\/player\/\d+)$/;
+
+/** Only same-site app paths are valid `from` targets for the week picker. */
+export function safeFrom(from: string | string[] | null | undefined): string {
+  const raw = Array.isArray(from) ? from[0] : from;
+  if (raw && SAFE_FROM.test(raw)) return raw;
+  return '/picks';
+}

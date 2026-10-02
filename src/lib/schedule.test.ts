@@ -151,6 +151,41 @@ describe('upsertScoreboardGames never moves a game across seasons (M3)', () => {
   });
 });
 
+describe('upsertScoreboardGames live fields', () => {
+  beforeEach(async () => {
+    await freshDb();
+  });
+
+  const liveGame = (over = {}) =>
+    sbGame('g1', '2026-10-11T17:00:00Z', {
+      live: { homeScore: 14, awayScore: 10, period: 2, clock: '1:05', status: 'STATUS_IN_PROGRESS', ...over },
+    });
+
+  it('stores live score/period/clock and clears them once the game is final', async () => {
+    const w = await makeWeek({ season: 2026, weekNumber: 5, unlockAt: d('2026-10-06T07:00:00Z'), lockAt: d('2026-10-08T19:00:00Z') });
+    const db = await getDb();
+    await upsertScoreboardGames(db, w.week.id, [liveGame()]);
+    let [g] = await db.select().from(games);
+    expect(g).toMatchObject({
+      status: 'scheduled', homeScore: null, awayScore: null, winner: null,
+      liveHomeScore: 14, liveAwayScore: 10, livePeriod: 2, liveClock: '1:05', liveStatus: 'STATUS_IN_PROGRESS',
+    });
+
+    await upsertScoreboardGames(db, w.week.id, [sbGame('g1', '2026-10-11T17:00:00Z', { status: 'final', homeScore: 21, awayScore: 17, winner: 'home' })]);
+    [g] = await db.select().from(games);
+    expect(g).toMatchObject({ status: 'final', homeScore: 21, liveHomeScore: null, liveAwayScore: null, livePeriod: null, liveClock: null, liveStatus: null });
+  });
+
+  it('a manual override keeps its result while live fields still update', async () => {
+    const w = await makeWeek({ season: 2026, weekNumber: 5, unlockAt: d('2026-10-06T07:00:00Z'), lockAt: d('2026-10-08T19:00:00Z') }, [{ espnId: 'g1' }]);
+    await adminOverrideGame(w.games[0].id, { homeScore: 3, awayScore: 0 });
+    const db = await getDb();
+    await upsertScoreboardGames(db, w.week.id, [liveGame()]);
+    const [g] = await db.select().from(games);
+    expect(g).toMatchObject({ status: 'final', homeScore: 3, winner: 'home', liveHomeScore: 14 });
+  });
+});
+
 describe('loadSeasonSchedule', () => {
   it('imports from the week containing now', async () => {
     await freshDb();

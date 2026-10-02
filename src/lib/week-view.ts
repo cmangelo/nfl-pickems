@@ -37,14 +37,7 @@ export function rankLabel(rank: number, tied: boolean): string {
   return `${tied ? 'T-' : ''}${ordinal(rank)}`;
 }
 
-const SAFE_FROM = /^\/(?:(?:picks|leaderboard|games|admin)(?:\/[a-z-]*)?|admin\/picks\/\d+|leaderboard\/player\/\d+)$/;
-
-/** Only same-site app paths are valid `from` targets for the week picker. */
-export function safeFrom(from: string | string[] | null | undefined): string {
-  const raw = Array.isArray(from) ? from[0] : from;
-  if (raw && SAFE_FROM.test(raw)) return raw;
-  return '/picks';
-}
+export { safeFrom } from './week-id';
 
 export const NO_GAMES_MESSAGE = "No games yet — the season schedule hasn't been loaded.";
 

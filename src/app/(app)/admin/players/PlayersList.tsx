@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Ellipsis } from 'lucide-react';
 import { removeUserAction, resetPinAction, setAdminAction } from '../actions';
 
 export interface PlayerRow {
@@ -65,9 +66,9 @@ function Player({ u, isMe }: { u: PlayerRow; isMe: boolean }) {
               aria-haspopup="menu"
               aria-expanded={menu}
               onClick={() => setMenu((m) => !m)}
-              className="size-10 rounded-lg text-xl font-bold hover:bg-surface-2"
+              className="flex size-10 items-center justify-center rounded-lg hover:bg-surface-2"
             >
-              ⋯
+              <Ellipsis size={20} aria-hidden="true" />
             </button>
             {menu && (
               <div role="menu" className="absolute right-0 top-11 z-10 w-48 overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
@@ -122,7 +123,7 @@ function Player({ u, isMe }: { u: PlayerRow; isMe: boolean }) {
               className="h-11 w-full rounded-[10px] border border-border bg-surface-2 px-3 text-fg"
             />
           </label>
-          <button type="submit" disabled={pending || pin.length !== 4} className="h-11 rounded-lg bg-accent px-4 text-sm font-bold text-[#04201c] disabled:opacity-60">
+          <button type="submit" disabled={pending || pin.length !== 4} className="h-11 rounded-lg bg-accent px-4 text-sm font-bold text-on-accent disabled:opacity-60">
             Save PIN
           </button>
         </form>

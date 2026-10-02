@@ -133,7 +133,7 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
             nobody (e.g. cancelled); &quot;Clear override&quot; brings it back.
           </p>
           <div className="flex gap-2">
-            <button type="button" disabled={pending} onClick={save} className="h-10 rounded-lg bg-accent px-3 text-sm font-bold text-[#04201c] disabled:opacity-60">
+            <button type="button" disabled={pending} onClick={save} className="h-10 rounded-lg bg-accent px-3 text-sm font-bold text-on-accent disabled:opacity-60">
               Save
             </button>
             <button type="button" disabled={pending} onClick={() => setEditing(false)} className={btn}>

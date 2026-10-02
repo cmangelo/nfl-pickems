@@ -36,8 +36,16 @@ export async function upsertScoreboardGames(db: Db, weekId: number, incoming: Sc
     const row = byEspn.get(g.espnId);
     const base = { weekId, kickoffAt: g.kickoffAt, homeTeam: g.homeTeam, awayTeam: g.awayTeam };
     const results = { homeScore: g.homeScore, awayScore: g.awayScore, status: g.status, winner: g.winner };
+    // Live display fields always follow ESPN (a manual override hides them, since the game is then final).
+    const live = {
+      liveHomeScore: g.live?.homeScore ?? null,
+      liveAwayScore: g.live?.awayScore ?? null,
+      livePeriod: g.live?.period ?? null,
+      liveClock: g.live?.clock ?? null,
+      liveStatus: g.live?.status ?? null,
+    };
     if (!row) {
-      await db.insert(games).values({ espnId: g.espnId, ...base, ...results });
+      await db.insert(games).values({ espnId: g.espnId, ...base, ...results, ...live });
     } else {
       if (row.weekId !== weekId) {
         if (row.season !== target.season) {
@@ -50,7 +58,7 @@ export async function upsertScoreboardGames(db: Db, weekId: number, incoming: Sc
       }
       await db
         .update(games)
-        .set(row.manualOverride ? base : { ...base, ...results })
+        .set(row.manualOverride ? { ...base, ...live } : { ...base, ...results, ...live })
         .where(eq(games.id, row.id));
     }
     count++;

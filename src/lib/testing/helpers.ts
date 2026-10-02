@@ -78,6 +78,7 @@ export function sbGame(espnId: string, kickoff: string, over: Partial<Scoreboard
     awayScore: null,
     status: 'scheduled',
     winner: null,
+    live: null,
     ...over,
   };
 }

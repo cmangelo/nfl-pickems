@@ -109,7 +109,7 @@ export default function AuthForm() {
       <button
         type="submit"
         disabled={pending}
-        className="flex h-[54px] items-center justify-center rounded-xl bg-accent text-lg font-bold text-bg disabled:opacity-60"
+        className="flex h-[54px] items-center justify-center rounded-xl bg-accent text-lg font-bold text-on-accent disabled:opacity-60"
       >
         {isSignup ? 'Create account' : 'Log in'}
       </button>

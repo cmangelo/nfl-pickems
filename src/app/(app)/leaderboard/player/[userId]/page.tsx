@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import { notFound, redirect } from 'next/navigation';
 import NoWeeks from '@/components/NoWeeks';
 import { requireUser } from '@/lib/auth';
@@ -42,8 +43,9 @@ export default async function PlayerPicksPage({
 
   return (
     <div className="flex flex-col gap-3">
-      <Link href={back} data-testid="back-to-leaderboard" className="text-sm text-accent-bright">
-        ← Leaderboard
+      <Link href={back} data-testid="back-to-leaderboard" className="inline-flex items-center gap-0.5 self-start text-sm text-accent-bright">
+        <ChevronLeft size={16} strokeWidth={2.5} aria-hidden="true" />
+        Leaderboard
       </Link>
       <h1 data-testid="player-heading" className="text-2xl font-bold">
         {mine ? 'Your picks' : `${name}'s picks`}

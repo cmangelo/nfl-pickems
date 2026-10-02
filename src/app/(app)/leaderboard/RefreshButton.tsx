@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { RotateCw } from 'lucide-react';
 import { refreshAction, type RefreshState } from './actions';
 
 const MESSAGE: Record<RefreshState, string> = {
@@ -19,8 +20,9 @@ export default function RefreshButton() {
         data-testid="refresh"
         disabled={pending}
         onClick={() => start(async () => setState(await refreshAction()))}
-        className="rounded-lg border border-accent px-3 py-1.5 text-sm font-semibold text-accent-bright disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-accent px-3 py-1.5 text-sm font-semibold text-accent-bright disabled:opacity-60"
       >
+        <RotateCw size={14} strokeWidth={2.5} aria-hidden="true" className={pending ? 'animate-spin' : ''} />
         {pending ? 'Refreshing…' : 'Refresh'}
       </button>
       <span role="status" data-testid="refresh-status" className="sr-only">
