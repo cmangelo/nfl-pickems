@@ -34,7 +34,7 @@ export default function BottomNav({ isAdmin }: { isAdmin: boolean }) {
               href={withWeek(href)}
               aria-current={on ? 'page' : undefined}
               className={`flex flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-semibold transition-colors ${
-                on ? 'bg-white/10 text-accent-bright' : 'text-muted hover:text-fg'
+                on ? 'text-accent-bright' : 'text-muted hover:text-fg'
               }`}
             >
               <Icon size={22} strokeWidth={on ? 2.4 : 2} aria-hidden="true" />

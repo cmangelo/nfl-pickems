@@ -61,6 +61,18 @@ test('@smoke bottom nav floats as a rounded capsule above the page edge and neve
     await expect(nav.getByRole('link', { name }).locator('svg.lucide')).toHaveCount(1);
   }
   await expect(nav.getByRole('link', { name: 'My Picks' })).toHaveAttribute('aria-current', 'page');
+
+  // The active tab is marked by color only: no pill background behind it, and its color differs from the others.
+  const tabStyle = (name: string) =>
+    nav.getByRole('link', { name }).evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { bg: cs.backgroundColor, color: cs.color };
+    });
+  const active = await tabStyle('My Picks');
+  const inactive = await tabStyle('Leaderboard');
+  expect(active.bg).toBe('rgba(0, 0, 0, 0)');
+  expect(inactive.bg).toBe('rgba(0, 0, 0, 0)');
+  expect(active.color).not.toBe(inactive.color);
   await expect(page.getByTestId('week-picker').locator('svg.lucide-chevron-down')).toHaveCount(1);
 });
 
