@@ -13,9 +13,13 @@ Mobile-first NFL weekly pick'em for a small friend group. Requirements: `REQUIRE
 ## Stack
 Next.js 15 (App Router, TypeScript strict, `src/`), Tailwind CSS v4, Drizzle ORM, Postgres. Production: Neon (`@neondatabase/serverless`, neon-http). Tests and local dev: PGlite (offline, embedded Postgres) with the same schema and the same drizzle-kit SQL migrations. Vitest (unit) and Playwright (e2e).
 
+## Security rules
+- **Layouts are not a security boundary.** Next.js skips layouts on partial renders (`RSC: 1` + `Next-Router-State-Tree`), so every `page.tsx` under `(app)` must itself `await requireUser()` first (admin pages: `await requireAdmin()`), every server action re-checks auth, and every `/api/test/*` route calls `testGuard()`. `src/lib/page-auth.test.ts` enforces this; `e2e/rsc-auth.spec.ts` sends the crafted request.
+- Server actions validate numeric ids with `isId` (`src/lib/validate.ts`) before touching the DB. Security headers live in `next.config.ts`.
+
 ## Layout
 - `src/app/`: routes (`/` redirects to `/picks` if logged in, else `/login`; `(app)/` route group = logged-in shell with header + bottom nav; `/api/test/*` are test-only)
-- `src/lib/auth.ts`: `signUp`, `login` (5 fails -> 15 min lock), `changePin`, `logout`, `getCurrentUser()`, `requireUser()` (redirects /login), `requireAdmin()` (404 for non-admins), `createSession`/`startSession`. Cookie `session` (httpOnly, lax, secure in prod, 1 yr). `src/lib/pin.ts`: scrypt `hashPin`/`verifyPin` (`scrypt$salt$hash`)
+- `src/lib/auth.ts`: `signUp`, `login` (atomic attempt reservation; 5 fails -> lock of 15 min x 2^prior lockouts, capped 24 h; counter reset only by success or admin PIN reset), `changePin`, `logout`, `getCurrentUser()`, `requireUser()` (redirects /login), `requireAdmin()` (404 for non-admins), `createSession`/`startSession`. Cookie `session` (httpOnly, lax, secure in prod, 1 yr). `src/lib/pin.ts`: scrypt `hashPin`/`verifyPin` (`scrypt$salt$hash`)
 - `src/db/schema.ts`: Drizzle schema. `src/db/index.ts`: driver selection (`getDb`, `resetDb`). `src/db/queries.ts`: query helpers (`seedBase`)
 - `drizzle/`: generated SQL migrations (commit them). After editing the schema run `npm run db:generate`
 - `src/lib/time.ts`: `now()` plus Pacific Time helpers (week unlock/lock, DST-correct)
@@ -34,7 +38,7 @@ Next.js 15 (App Router, TypeScript strict, `src/`), Tailwind CSS v4, Drizzle ORM
 | E2E (mobile + desktop smoke) | `npm run test:e2e` (builds, starts the server on port 3100, or `E2E_PORT` if set, with a fresh in-memory DB, TEST_MODE=1, ESPN_MODE=fixture) |
 | Generate migration | `npm run db:generate` |
 | Apply migrations | `npm run db:migrate` |
-| Seed admin (local) | `npm run db:seed` (stop the dev server first). Env `ADMIN_USERNAME`/`ADMIN_PIN`/`ADMIN_FIRST_NAME`; defaults admin/1234/Admin in dev only, required in production |
+| Seed admin (local) | `npm run db:seed` (stop the dev server first). Env `ADMIN_USERNAME`/`ADMIN_PIN`/`ADMIN_FIRST_NAME`; defaults admin/1234/Admin for local pglite only; all three required and trivial PINs refused with the neon driver or NODE_ENV=production |
 
 Set `E2E_PORT=3101 CI=1 npm run test:e2e` to run on another port so two worktrees can run e2e concurrently (`playwright.config.ts` and `e2e/helpers.ts` both read it). Note `reuseExistingServer` is off in CI, so a busy port fails fast.
 

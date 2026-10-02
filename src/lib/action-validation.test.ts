@@ -1,0 +1,57 @@
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+process.env.DB_DRIVER = 'memory';
+
+vi.mock('@/lib/auth', () => ({
+  requireAdmin: async () => ({ id: 1, isAdmin: true }),
+  requireUser: async () => ({ id: 1, isAdmin: true, firstName: 'A' }),
+}));
+vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
+
+import { isId } from './validate';
+
+const BAD: unknown[] = [0, -1, 1.5, NaN, Infinity, 2 ** 40, '2', null, undefined, {}, [1]];
+const INVALID = { ok: false, error: 'Invalid request.' };
+
+describe('isId', () => {
+  it('accepts positive int4 integers only', () => {
+    for (const n of [1, 2, 99999, 2147483647]) expect(isId(n), String(n)).toBe(true);
+    for (const n of BAD) expect(isId(n), String(n)).toBe(false);
+  });
+});
+
+describe('admin actions reject malformed ids with a validation error (no DB error thrown)', () => {
+  let a: typeof import('@/app/(app)/admin/actions');
+  beforeAll(async () => {
+    a = await import('@/app/(app)/admin/actions');
+  });
+
+  it('every id-taking action', async () => {
+    for (const bad of BAD) {
+      const b = bad as number;
+      expect(await a.setPaidAction(b, 1, true), `setPaid user ${String(bad)}`).toEqual(INVALID);
+      expect(await a.setPaidAction(1, b, true), `setPaid week ${String(bad)}`).toEqual(INVALID);
+      expect(await a.syncNowAction(b), 'syncNow').toEqual(INVALID);
+      expect(await a.setLockAction(b, null), 'setLock').toEqual(INVALID);
+      expect(await a.overrideGameAction(b, 1, 0, 'home'), 'override').toEqual(INVALID);
+      expect(await a.clearOverrideAction(b), 'clearOverride').toEqual(INVALID);
+      expect(await a.adminSubmitPicksAction(b, 1, {}, 40), 'adminSubmit user').toEqual(INVALID);
+      expect(await a.adminSubmitPicksAction(1, b, {}, 40), 'adminSubmit week').toEqual(INVALID);
+      expect(await a.resetPinAction(b, '1234'), 'resetPin').toEqual(INVALID);
+      expect(await a.setAdminAction(b, true), 'setAdmin').toEqual(INVALID);
+      expect(await a.removeUserAction(b), 'removeUser').toEqual(INVALID);
+    }
+  });
+
+  it('a well-formed id for a missing row is a normal error, not a throw', async () => {
+    expect(await a.setPaidAction(999, 999, true)).toEqual({ ok: false, error: 'Entry not found.' });
+  });
+});
+
+describe('picks action', () => {
+  it('rejects a malformed week id or picks object', async () => {
+    const { submitPicksAction } = await import('@/app/(app)/picks/actions');
+    for (const bad of BAD) expect(await submitPicksAction(bad as number, {}, 40), String(bad)).toEqual({ ok: false, error: 'Invalid request.' });
+    expect(await submitPicksAction(1, null as never, 40)).toEqual({ ok: false, error: 'Invalid request.' });
+  });
+});

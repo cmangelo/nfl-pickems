@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import NoWeeks from '@/components/NoWeeks';
+import { requireAdmin } from '@/lib/auth';
 import { listUsers, toPtInputValue } from '@/lib/admin';
 import { listEntries } from '@/lib/picks';
 import { getSelectedWeek } from '@/lib/selected-week';
@@ -10,6 +11,7 @@ import GameEditor from './GameEditor';
 import { LockPanel, SyncPanel } from './Panels';
 
 export default async function AdminGamesPage({ searchParams }: { searchParams: Promise<{ week?: string | string[] }> }) {
+  await requireAdmin(); // layouts are skipped on partial renders: every page enforces auth itself
   const { week: weekParam } = await searchParams;
   const { week, games } = await getSelectedWeek(weekParam);
   if (!week) return <NoWeeks />;

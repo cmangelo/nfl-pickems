@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { users } from '@/db/schema';
+import { isId } from '@/lib/validate';
 import NoWeeks from '@/components/NoWeeks';
 import { getEntry } from '@/lib/picks';
 import { requireAdmin } from '@/lib/auth';
@@ -20,10 +21,10 @@ export default async function AdminEditPicksPage({
   params: Promise<{ userId: string }>;
   searchParams: Promise<{ week?: string | string[] }>;
 }) {
+  const me = await requireAdmin();
   const { userId: rawId } = await params;
   const { week: weekParam } = await searchParams;
-  const me = await requireAdmin();
-  if (!/^\d+$/.test(rawId)) notFound();
+  if (!/^\d+$/.test(rawId) || !isId(Number(rawId))) notFound();
   const userId = Number(rawId);
   const db = await getDb();
   const [user] = await db.select().from(users).where(eq(users.id, userId));

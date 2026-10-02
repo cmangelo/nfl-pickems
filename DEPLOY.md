@@ -13,7 +13,7 @@ You need: a GitHub account with this repo, a Vercel account, and Node 22 + npm o
 
 ## 2. Add the Neon Postgres database
 
-1. In the Vercel project, open **Storage** → **Create Database** → **Neon (Serverless Postgres)** → free plan. Pick a region near you (e.g. US West).
+1. In the Vercel project, open **Storage** → **Create Database** → **Neon (Serverless Postgres)** → free plan. Pick **US East (N. Virginia)**, the same region Vercel runs the app's functions in by default (`iad1`). Each page makes several database queries, so a mismatched region makes pages noticeably slower. If you'd rather use US West, also set the project's Function Region to match: Vercel → **Settings** → **Functions** → **Function Region**.
 2. Connect it to the project for **Production** (and Preview if you like).
 3. This automatically adds `DATABASE_URL` (and a few other `PG*`/`POSTGRES_*` variables) to the project's environment variables. The app only needs `DATABASE_URL`.
 
@@ -66,6 +66,10 @@ Check it in Vercel → project → **Settings** → **Cron Jobs**. You can click
 - Each week, in **Admin → Payments**, mark entries paid. Only paid entries count.
 - **Admin → Games**: "Sync from ESPN now", fix a score if ESPN is wrong, or change a week's lock time. Thanksgiving week already defaults to Thursday 9:00 AM PT.
 - **Admin → Players**: reset a forgotten PIN, make someone an admin.
+
+## Optional: rate-limit logins
+
+The app already locks a username after 5 wrong PINs, and lockouts get longer each time, up to 24 hours. For extra protection against someone hammering the login page, add a Vercel Firewall rule: Vercel → project → **Firewall** → **Add Rule** → if Request Path equals `/login` and Method equals `POST`, apply **Rate Limit** (for example 20 requests per minute per IP).
 
 ## Admin runbook
 
