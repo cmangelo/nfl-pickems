@@ -117,3 +117,14 @@ export async function findStartWeek(client: EspnClient, season: number, now: Dat
 export function seasonOf(now: Date): number {
   return ptDate(now).year;
 }
+
+export type LoadSeasonResult = { ok: true; season: number; fromWeek: number; weeks: number; games: number } | { ok: false; reason: 'none_found' };
+
+/** Imports the current season from the week containing `at` onward (shared by the build script and the admin button). */
+export async function loadSeasonSchedule(client: EspnClient, at: Date): Promise<LoadSeasonResult> {
+  const season = seasonOf(at);
+  const fromWeek = await findStartWeek(client, season, at);
+  if (fromWeek === null) return { ok: false, reason: 'none_found' };
+  const res = await importSeason({ season, fromWeek, client });
+  return { ok: true, season, fromWeek, ...res };
+}

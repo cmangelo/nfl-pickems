@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { formatPT, ptDayOfWeek, weekLockAt, weekTuesday, weekUnlockAt } from './time';
+import { describe, expect, it, vi } from 'vitest';
+import { formatPT, isTestMode, ptDayOfWeek, weekLockAt, weekTuesday, weekUnlockAt } from './time';
 
 describe('PT week helpers', () => {
   it('finds the Tuesday of the week from any day', () => {
@@ -44,5 +44,21 @@ describe('PT week helpers', () => {
 
   it('formats in PT', () => {
     expect(formatPT(new Date('2026-10-08T19:00:00Z'))).toBe('Thu Oct 8, 12:00 PM PT');
+  });
+});
+
+describe('isTestMode', () => {
+  it('is on only for TEST_MODE=1 outside Vercel', () => {
+    expect(isTestMode({ TEST_MODE: '1' } as unknown as NodeJS.ProcessEnv)).toBe(true);
+    expect(isTestMode({} as unknown as NodeJS.ProcessEnv)).toBe(false);
+    expect(isTestMode({ TEST_MODE: '0' } as unknown as NodeJS.ProcessEnv)).toBe(false);
+  });
+
+  it('is forced off on Vercel and warns once', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(isTestMode({ TEST_MODE: '1', VERCEL: '1' } as unknown as NodeJS.ProcessEnv)).toBe(false);
+    expect(isTestMode({ TEST_MODE: '1', VERCEL: '1' } as unknown as NodeJS.ProcessEnv)).toBe(false);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 });

@@ -9,7 +9,7 @@ import { requireAdmin } from '@/lib/auth';
 import { getEspnClient } from '@/lib/espn';
 import { isId } from '@/lib/validate';
 import { submitPicks } from '@/lib/picks';
-import { importSeason } from '@/lib/schedule';
+import { importSeason, loadSeasonSchedule } from '@/lib/schedule';
 import type { Side } from '@/lib/scoring';
 import { adminOverrideGame, clearOverride, syncScores, voidGame } from '@/lib/sync';
 import { now } from '@/lib/time';
@@ -152,4 +152,16 @@ export async function removeUserAction(userId: number): Promise<ActionResult> {
   if (!res.ok) return bad(res.error);
   refresh();
   return { ok: true };
+}
+
+export async function loadScheduleAction(): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    const res = await loadSeasonSchedule(getEspnClient(), await now());
+    if (!res.ok) return bad('ESPN has no remaining weeks for this season.');
+    refresh();
+    return { ok: true, message: `Loaded ${res.weeks} weeks (${res.games} games) from week ${res.fromWeek}.` };
+  } catch (e) {
+    return bad(`Load failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }

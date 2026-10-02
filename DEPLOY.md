@@ -32,7 +32,9 @@ Do **not** set `TEST_MODE`, `DB_DRIVER`, `PGLITE_DIR` or `ESPN_MODE` in producti
 
 ## 4. Create the tables, the first admin, and the schedule
 
-Run these once from your computer, in a checkout of the repo:
+**This now happens automatically.** Vercel runs `npm run vercel-build` (see `scripts/vercel-build.ts`) on every deploy: it applies migrations, seeds the admin from `ADMIN_*` (idempotent, never overwrites an existing PIN; a missing `ADMIN_*` only warns, invalid or trivial values fail the build), and imports the season schedule from ESPN if the weeks table is empty (an ESPN failure only warns). If the schedule is still empty, an admin can click **Load season schedule from ESPN** on Admin → Games.
+
+The manual commands below are optional, kept as a fallback. Run them from your computer, in a checkout of the repo:
 
 ```bash
 npm install
@@ -49,6 +51,16 @@ npm run db:import-schedule -- --season 2026   # loads the rest of the season fro
 `db:import-schedule` with no `--from` starts at the week containing today (earlier weeks are never loaded). Add `--from N` to start at a specific week.
 
 Delete `.env.local` afterwards if you don't want production credentials on your computer.
+
+## Dev / preview deployments
+
+- Every push to a non-production branch gets its own preview URL.
+- With the Neon integration, enable **Create a database branch for each preview deployment** (Neon → Vercel integration settings). Each preview then gets its own `DATABASE_URL`, so previews never touch production data.
+- Set `ADMIN_USERNAME`, `ADMIN_PIN`, `ADMIN_FIRST_NAME` (and `CRON_SECRET`) for the **Preview** environment too.
+- Migrations, the admin seed and the schedule import run automatically during the build (`vercel-build`). Without a `DATABASE_URL` the DB steps are skipped.
+- Crons run only on production; on a preview, use Admin → Games → "Sync from ESPN now".
+- `TEST_MODE` is ignored on Vercel (when `VERCEL` is set), so a preview can never expose the test routes or clock override.
+- The Vercel connector (<https://claude.ai/customize/connectors> → Vercel) lets Claude list deployments and read build logs.
 
 ## 5. Deploy
 
@@ -81,4 +93,4 @@ The app already locks a username after 5 wrong PINs, and lockouts get longer eac
 
 ## Schema changes later
 
-If a future change adds a migration (a new file in `drizzle/`), run `npm run db:migrate` against production again (step 4, with fresh `.env.local`) before or right after deploying.
+If a future change adds a migration (a new file in `drizzle/`), the next deploy applies it automatically (`vercel-build`). The manual `npm run db:migrate` (step 4) remains a fallback.

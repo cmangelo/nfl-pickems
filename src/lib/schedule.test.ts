@@ -150,3 +150,18 @@ describe('upsertScoreboardGames never moves a game across seasons (M3)', () => {
     warn.mockRestore();
   });
 });
+
+describe('loadSeasonSchedule', () => {
+  it('imports from the week containing now', async () => {
+    await freshDb();
+    const { loadSeasonSchedule } = await import('./schedule');
+    const res = await loadSeasonSchedule(new FixtureEspnClient(), new Date('2026-10-06T20:00:00Z'));
+    expect(res).toMatchObject({ ok: true, season: 2026, fromWeek: 5, weeks: 3 });
+  });
+
+  it('reports none_found when nothing remains', async () => {
+    await freshDb();
+    const { loadSeasonSchedule } = await import('./schedule');
+    expect(await loadSeasonSchedule(new FixtureEspnClient(), new Date('2026-12-30T20:00:00Z'))).toEqual({ ok: false, reason: 'none_found' });
+  });
+});

@@ -301,3 +301,21 @@ test('week picker from admin edit-picks returns to the same page with the chosen
   await page.getByTestId('week-row-7').click();
   await expect(page).toHaveURL(new RegExp(`/(leaderboard/player/1|leaderboard)\\?week=${wk7.weekId}$`));
 });
+
+test('empty schedule: admin loads the season from ESPN; non-admin sees no button', async ({ page, context, request }) => {
+  await createUser(request, 'Bob', 'bob');
+  await setNow(context, '2026-10-06T20:00:00Z'); // Tue of 2026 week 5
+  await loginAs(page, 'bob');
+  await page.goto('/picks');
+  await expect(page.getByTestId('no-weeks')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Load season schedule from ESPN' })).toHaveCount(0);
+
+  await loginAs(page, 'admin');
+  await page.goto('/admin/games');
+  await expect(page.getByTestId('no-weeks')).toBeVisible();
+  await page.getByRole('button', { name: 'Load season schedule from ESPN' }).click();
+  // the action revalidates the page, so the empty state is replaced by the loaded schedule
+  await expect(page.getByTestId('lock-time')).toBeVisible();
+  await expect(page.getByTestId('no-weeks')).toHaveCount(0);
+  await expect(page.getByTestId('lock-time')).toBeVisible();
+});

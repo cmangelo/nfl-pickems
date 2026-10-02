@@ -34,7 +34,7 @@ Next.js 15 (App Router, TypeScript strict, `src/`), Tailwind CSS v4, Drizzle ORM
 | Lint | `npm run lint` |
 | Typecheck | `npm run typecheck` |
 | Unit tests | `npm test` |
-| Production build | `npm run build` |
+| Production build | `npm run build` (plain `next build`; Vercel runs `npm run vercel-build` = `scripts/vercel-build.ts` then `next build`) |
 | E2E (mobile + desktop smoke) | `npm run test:e2e` (builds, starts the server on port 3100, or `E2E_PORT` if set, with a fresh in-memory DB, TEST_MODE=1, ESPN_MODE=fixture) |
 | Generate migration | `npm run db:generate` |
 | Apply migrations | `npm run db:migrate` |
@@ -103,3 +103,6 @@ Dark, teal accent. CSS variables in `src/app/globals.css`: `--bg #0f1115`, `--ac
 
 ## Admin (`src/app/(app)/admin/**`)
 `/admin` redirects to `/admin/payments` (keeps `?week=`); tabs Payments, Games, Players (`AdminTabs`). Players hides the week picker (header shows "Admin"). `admin/layout.tsx` calls `requireAdmin()` and EVERY server action in `admin/actions.ts` calls it again. Games tab: sync button (`importSeason` for the selected week, then forced `syncScores`), lock override, per-game override editor. `/admin/picks/[userId]?week=` reuses `PicksForm` (props `submitAction`, `savedMessage`) and saves via `submitPicks(..., { asAdmin: true })`. In e2e the status pill for a locked, unfinished week reads "Live".
+
+## Vercel deploys
+`scripts/vercel-build.ts` (`runVercelBuild(deps)`, unit-tested) runs only with the neon driver: migrate (`scripts/migrate-lib.ts`, failure fails the deploy), seed admin if `ADMIN_*` all set (invalid = fail, unset = warn), import schedule if no weeks (ESPN failure = warn). Build scripts may use the real clock. `loadSeasonSchedule` (schedule.ts) backs both that and the admin "Load season schedule from ESPN" button (`loadScheduleAction`, shown by `NoWeeks` to admins). `isTestMode()` is false whenever `VERCEL` is set. See DEPLOY.md.

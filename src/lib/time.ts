@@ -4,8 +4,19 @@ import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 export const PT = 'America/Los_Angeles';
 export const TEST_NOW_KEY = 'x-test-now';
 
-export function isTestMode(): boolean {
-  return process.env.TEST_MODE === '1';
+let warnedDeployedTestMode = false;
+
+/** TEST_MODE=1 is ignored (and logged once) on Vercel so a deployment can never expose test routes or the clock override. */
+export function isTestMode(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.TEST_MODE !== '1') return false;
+  if (env.VERCEL) {
+    if (!warnedDeployedTestMode) {
+      warnedDeployedTestMode = true;
+      console.warn('TEST_MODE=1 is set on a Vercel deployment; ignoring it (test mode is disabled).');
+    }
+    return false;
+  }
+  return true;
 }
 
 function parseIso(v: string | undefined | null): Date | null {
