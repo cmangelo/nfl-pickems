@@ -34,6 +34,11 @@ export const ESPN_LOGO_BASE = 'https://a.espncdn.com/i/teamlogos/nfl';
 export type LogoVariant = '500-dark' | '500';
 export const LOGO_VARIANTS: LogoVariant[] = ['500-dark', '500'];
 
+/** Fallback order of logo variants: standard first on a light surface (e.g. a selected pick), dark first otherwise. */
+export function logoVariants(onLight: boolean): LogoVariant[] {
+  return onLight ? ['500', '500-dark'] : LOGO_VARIANTS;
+}
+
 export function teamLogoUrl(abbr: string, variant: LogoVariant = '500-dark', base: string = ESPN_LOGO_BASE): string {
   return `${base}/${variant}/${encodeURIComponent(abbr.toLowerCase())}.png`;
 }

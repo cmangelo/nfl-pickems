@@ -81,6 +81,10 @@ test('team logos show next to abbreviations, served locally in tests (never the 
   await expect(logo).toHaveAttribute('src', '/api/test/logo/500-dark/kc.png');
   await expect.poll(() => logo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await expect(page.getByTestId(`pick-${gameIds[0]}-away`).getByTestId('team-logo')).toHaveAttribute('data-team', 'BUF');
+  // A selected pick has a light (mono) fill, so its logo switches to ESPN's standard, light-background variant.
+  await btn.click();
+  await expect(btn.getByTestId('team-logo')).toHaveAttribute('src', '/api/test/logo/500/kc.png');
+  await expect(page.getByTestId(`pick-${gameIds[0]}-away`).getByTestId('team-logo')).toHaveAttribute('src', '/api/test/logo/500-dark/buf.png');
   expect(external).toEqual([]);
 });
 

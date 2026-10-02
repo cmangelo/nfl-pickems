@@ -116,7 +116,7 @@ export default function PicksForm({
                   onClick={() => choose(g.id, 'away')}
                   className={teamClass(picks[g.id] === 'away')}
                 >
-                  <TeamLogo abbr={g.away} size={26} />
+                  <TeamLogo key={picks[g.id] === 'away' ? 'light' : 'dark'} abbr={g.away} size={26} onLight={picks[g.id] === 'away'} />
                   <span>{g.away}</span>
                 </button>
                 <span aria-hidden="true" className="text-sm text-muted">@</span>
@@ -127,7 +127,7 @@ export default function PicksForm({
                   onClick={() => choose(g.id, 'home')}
                   className={teamClass(picks[g.id] === 'home')}
                 >
-                  <TeamLogo abbr={g.home} size={26} />
+                  <TeamLogo key={picks[g.id] === 'home' ? 'light' : 'dark'} abbr={g.home} size={26} onLight={picks[g.id] === 'home'} />
                   <span>{g.home}</span>
                 </button>
               </div>

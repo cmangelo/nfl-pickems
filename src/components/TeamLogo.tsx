@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { ESPN_LOGO_BASE, LOGO_VARIANTS, teamLogoUrl } from '@/lib/game-view';
+import { ESPN_LOGO_BASE, logoVariants, teamLogoUrl } from '@/lib/game-view';
 
 const LogoBase = createContext<string>(ESPN_LOGO_BASE);
 
@@ -12,14 +12,25 @@ export function LogoBaseProvider({ base, children }: { base: string; children: R
 
 /**
  * Decorative team logo shown next to the abbreviation (which stays the accessible text). Tries ESPN's
- * dark-background variant, then the standard one; if both fail it keeps an empty box of the same size so
- * the layout does not shift.
+ * dark-background variant, then the standard one (reversed with `onLight`, e.g. on a selected pick's light
+ * fill); if both fail it keeps an empty box of the same size so the layout does not shift.
  */
-export default function TeamLogo({ abbr, size = 24, className = '' }: { abbr: string; size?: number; className?: string }) {
+export default function TeamLogo({
+  abbr,
+  size = 24,
+  onLight = false,
+  className = '',
+}: {
+  abbr: string;
+  size?: number;
+  onLight?: boolean;
+  className?: string;
+}) {
   const base = useContext(LogoBase);
+  const variants = logoVariants(onLight);
   const [attempt, setAttempt] = useState(0);
   const ref = useRef<HTMLImageElement>(null);
-  const failed = attempt >= LOGO_VARIANTS.length;
+  const failed = attempt >= variants.length;
   const next = () => setAttempt((a) => a + 1);
 
   // A server-rendered <img> can fail before hydration attaches onError; catch that case on mount.
@@ -33,7 +44,7 @@ export default function TeamLogo({ abbr, size = 24, className = '' }: { abbr: st
     // eslint-disable-next-line @next/next/no-img-element -- tiny static logos from a CDN; no optimizer needed
     <img
       ref={ref}
-      src={teamLogoUrl(abbr, LOGO_VARIANTS[attempt], base)}
+      src={teamLogoUrl(abbr, variants[attempt], base)}
       alt=""
       aria-hidden="true"
       width={size}

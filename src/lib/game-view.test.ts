@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ESPN_LOGO_BASE, liveLabel, periodLabel, teamLogoUrl } from './game-view';
+import { ESPN_LOGO_BASE, liveLabel, logoVariants, periodLabel, teamLogoUrl } from './game-view';
 
 const live = (over: Partial<Parameters<typeof liveLabel>[0]> = {}) =>
   liveLabel({ status: 'scheduled', liveStatus: 'STATUS_IN_PROGRESS', livePeriod: 3, liveClock: '4:12', ...over });
@@ -30,6 +30,13 @@ describe('liveLabel', () => {
   it('null when not live', () => {
     expect(live({ liveStatus: null })).toBeNull();
     for (const status of ['final', 'postponed', 'void'] as const) expect(live({ status })).toBeNull();
+  });
+});
+
+describe('logoVariants', () => {
+  it('dark-background logo first on dark surfaces, standard first on light ones', () => {
+    expect(logoVariants(false)).toEqual(['500-dark', '500']);
+    expect(logoVariants(true)).toEqual(['500', '500-dark']);
   });
 });
 
