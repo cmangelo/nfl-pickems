@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { TEAM_COLORS, barColors } from '../src/lib/team-colors';
 import { createUser, expectNoPlayerCountOf, loginAs, resetDb, seedWeek, setNow, setPaid, setResult, submitPicksFor } from './helpers';
 
 /** Several entries per player per week: each is a separate fee, paid, ranked and shown on its own. */
@@ -6,6 +7,7 @@ import { createUser, expectNoPlayerCountOf, loginAs, resetDb, seedWeek, setNow, 
 const WED = '2026-10-07T20:00:00Z'; // week locks Thu Oct 8 12:00 PM PT
 const FRI = '2026-10-09T20:00:00Z';
 const H = 'home' as const;
+const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
 const A = 'away' as const;
 
 test.beforeEach(async ({ request }) => {
@@ -313,12 +315,18 @@ test('@smoke games: splits count every paid entry, with a two-color bar and perc
   await expect(page.getByTestId(`split-pct-${g0}-home`)).toHaveText(/ 75%$/);
   await expect(page.getByTestId(`split-bar-${g0}`)).toHaveAttribute('aria-label', /^1 entry picked \w+ \(25%\), 3 entries picked \w+ \(75%\)$/);
 
-  // Two distinct segment colors, sized by share.
+  // Each segment in its team's color (barColors), sized by share.
   const away = page.getByTestId(`split-seg-${g0}-away`);
   const home = page.getByTestId(`split-seg-${g0}-home`);
+  const [awayTeam, homeTeam] = (await page.getByTestId(`game-card-${g0}`).getByText(/^\w+ @ \w+$/).innerText()).split(' @ ');
+  const want = barColors(awayTeam, homeTeam);
+  expect(TEAM_COLORS[awayTeam], 'seeded teams are real teams').toBeDefined();
+  await expect(away).toHaveAttribute('data-color', want.away);
+  await expect(home).toHaveAttribute('data-color', want.home);
   const color = (l: typeof away) => l.evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(await color(away)).toBe('rgb(57, 135, 229)');
-  expect(await color(home)).toBe('rgb(217, 89, 38)');
+  expect(await color(away)).toBe(rgb(want.away));
+  expect(await color(home)).toBe(rgb(want.home));
+  expect(want.away).not.toBe(want.home);
   const wAway = (await away.boundingBox())!.width;
   const wHome = (await home.boundingBox())!.width;
   expect(wHome / wAway).toBeGreaterThan(2.7);

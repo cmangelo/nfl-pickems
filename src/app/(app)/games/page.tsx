@@ -2,6 +2,7 @@ import NoWeeks from '@/components/NoWeeks';
 import RevealedCard from '@/components/RevealedCard';
 import TeamLogo from '@/components/TeamLogo';
 import { entryCount, liveLabel, splitPercents } from '@/lib/game-view';
+import { barColors } from '@/lib/team-colors';
 import { requireUser } from '@/lib/auth';
 import { getEntries, listEntries } from '@/lib/picks';
 import type { Side } from '@/lib/scoring';
@@ -120,13 +121,16 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
         };
         const isVoid = g.status === 'void';
         const pct = splitPercents(split.away, split.home);
+        // Each side in its team's color (kept visible on the card and distinct from the opponent).
+        const colors = barColors(g.awayTeam, g.homeTeam);
         const segment = (sd: Side) => {
           const n = split[sd];
           if (n === 0) return null;
-          const color = isVoid ? 'var(--muted)' : sd === 'away' ? 'var(--split-away)' : 'var(--split-home)';
+          const color = isVoid ? 'var(--muted)' : colors[sd];
           return (
             <div
               data-testid={`split-seg-${g.id}-${sd}`}
+              data-color={isVoid ? 'void' : colors[sd]}
               className={`basis-0 ${isVoid ? 'opacity-40' : ''}`}
               style={{ flexGrow: n, background: color }}
             />
@@ -137,7 +141,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
             <span
               aria-hidden="true"
               className={`size-2.5 rounded-sm ${isVoid ? 'opacity-40' : ''}`}
-              style={{ background: isVoid ? 'var(--muted)' : sd === 'away' ? 'var(--split-away)' : 'var(--split-home)' }}
+              style={{ background: isVoid ? 'var(--muted)' : colors[sd] }}
             />
             <span>
               {team} <span className="tabular-nums text-fg">{pct?.[sd]}%</span>
@@ -167,7 +171,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
               {side('away', g.awayTeam)}
               {side('home', g.homeTeam)}
             </div>
-            {/* Share of counted entries per side: a two-segment bar (away | home) with percentages under each end. */}
+            {/* Share of counted entries per side: a two-segment bar (away | home, team colors) with percentages under each end. */}
             <div className="mt-3">
               <div
                 role="img"
