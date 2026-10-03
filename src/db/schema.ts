@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   index,
   integer,
   pgTable,
@@ -93,6 +94,8 @@ export const entries = pgTable(
     userId: integer('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    /** 1-based, per (week, user); stable once assigned (deleting an entry never renumbers the rest). */
+    entryNo: integer('entry_no').notNull().default(1),
     tiebreaker: integer('tiebreaker').notNull(),
     paid: boolean('paid').notNull().default(false),
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
@@ -101,7 +104,10 @@ export const entries = pgTable(
     editedByAdminId: integer('edited_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
     adminEditedAt: timestamp('admin_edited_at', { withTimezone: true }),
   },
-  (t) => [uniqueIndex('entries_week_user_idx').on(t.weekId, t.userId)],
+  (t) => [
+    uniqueIndex('entries_week_user_no_idx').on(t.weekId, t.userId, t.entryNo),
+    check('entries_entry_no_range', sql`${t.entryNo} BETWEEN 1 AND 10`),
+  ],
 );
 
 export const picks = pgTable(

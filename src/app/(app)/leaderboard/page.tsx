@@ -36,7 +36,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         <h1 className="sr-only">Leaderboard</h1>
         <RevealedCard
           lockShort={formatPT(effectiveLock(week), "EEE h:mm a 'PT'")}
-          names={entries.map((e) => ({ userId: e.userId, firstName: e.firstName }))}
+          names={entries.filter((e) => e.entryIndex === 0).map((e) => ({ userId: e.userId, firstName: e.firstName, entries: e.entryCount }))}
           count={entries.length}
           viewerId={user.id}
         />

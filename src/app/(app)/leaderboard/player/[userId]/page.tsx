@@ -8,6 +8,8 @@ import { getSelectedWeek } from '@/lib/selected-week';
 import { refreshWithBudget } from '@/lib/sync';
 import { formatPT, now as getNow } from '@/lib/time';
 import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
+import { selectEntry } from '@/lib/entry-select';
+import EntryTabs from '../../../picks/EntryTabs';
 import LockedPicks from '../../../picks/LockedPicks';
 
 export default async function PlayerPicksPage({
@@ -15,11 +17,12 @@ export default async function PlayerPicksPage({
   searchParams,
 }: {
   params: Promise<{ userId: string }>;
-  searchParams: Promise<{ week?: string | string[] }>;
+  searchParams: Promise<{ week?: string | string[]; entry?: string | string[] }>;
 }) {
   const viewer = await requireUser();
   const { userId } = await params;
-  const { week: weekParam } = await searchParams;
+  const sp = await searchParams;
+  const weekParam = sp.week;
   if (!/^\d+$/.test(userId)) notFound();
   const t = await getNow();
   let sel = await getSelectedWeek(weekParam, t);
@@ -33,7 +36,10 @@ export default async function PlayerPicksPage({
   // Picks are hidden until the lock.
   if (state === 'open') redirect(back);
 
-  const entry = (await listEntries(week.id)).find((e) => e.userId === Number(userId)) ?? null;
+  const theirs = (await listEntries(week.id)).filter((e) => e.userId === Number(userId));
+  const { entry, index } = selectEntry(theirs, sp.entry, undefined, { allowNew: false });
+  const base = `/leaderboard/player/${userId}?week=${week.id}`;
+  const tabs = theirs.map((e, i) => ({ key: String(i + 1), label: `Entry ${i + 1}`, href: `${base}&entry=${e.entryId}`, current: e === entry }));
   const tb = await resolveTiebreakerGame(week, games, t);
   const tbLabel = tb
     ? `Total points in ${tb.awayTeam} @ ${tb.homeTeam} (${formatPT(tb.kickoffAt, 'EEE h:mm a')})`
@@ -49,8 +55,12 @@ export default async function PlayerPicksPage({
       </Link>
       <h1 data-testid="player-heading" className="text-2xl font-bold">
         {mine ? 'Your picks' : `${name}'s picks`}
-        <span className="ml-2 text-sm font-normal text-muted">Week {week.weekNumber}</span>
+        <span className="ml-2 text-sm font-normal text-muted">
+          Week {week.weekNumber}
+          {theirs.length > 1 && ` · Entry ${index + 1}`}
+        </span>
       </h1>
+      <EntryTabs tabs={tabs} />
       {entry && !entry.paid && (
         <p data-testid="player-unpaid" className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted">
           Not counted · unpaid. This entry is left out of the standings until an admin marks it paid.
@@ -60,7 +70,7 @@ export default async function PlayerPicksPage({
         games={games}
         entry={entry}
         weekNumber={week.weekNumber}
-        userName={name}
+        userName={entry?.label ?? name}
         tiebreakerLabel={tbLabel}
         lockShort={formatPT(effectiveLock(week), "EEE h:mm a 'PT'")}
         other={!mine}

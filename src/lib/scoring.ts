@@ -15,7 +15,10 @@ export interface ScoringGame {
 }
 
 export interface ScoringEntry {
+  /** One player may have several entries in a week; each is ranked, counted and paid for separately. */
+  entryId: number;
   userId: number;
+  /** Display label: first name, or "Chris (2)" for a player with several entries. */
   name: string;
   paid: boolean;
   tiebreaker: number;
@@ -23,6 +26,7 @@ export interface ScoringEntry {
 }
 
 export interface ScoredEntry {
+  entryId: number;
   userId: number;
   name: string;
   paid: boolean;
@@ -106,8 +110,9 @@ export function rankEntries(games: ScoringGame[], entries: ScoringEntry[], tiebr
     (a, b) =>
       b.correct - a.correct ||
       (a.tiebreakerDiff ?? 0) - (b.tiebreakerDiff ?? 0) ||
-      a.name.localeCompare(b.name) ||
-      a.userId - b.userId,
+      a.name.localeCompare(b.name, undefined, { numeric: true }) ||
+      a.userId - b.userId ||
+      a.entryId - b.entryId,
   );
   const sameRank = (a: ScoredEntry, b: ScoredEntry) =>
     a.correct === b.correct && (a.tiebreakerDiff ?? 0) === (b.tiebreakerDiff ?? 0);
@@ -155,7 +160,7 @@ export interface WeekSummary {
   /** Rank-1 entries once the week is final (co-winners); empty before then. */
   winners: RankedEntry[];
   stats: WeekStats | null;
-  /** Pick counts per game over counted (paid) entries only. */
+  /** Pick counts per game over counted (paid) entries only; a player's second entry counts again. */
   splits: Record<number, GameSplit>;
   upset: Upset | null;
   tiebreakerGameId: number | null;
@@ -171,7 +176,7 @@ export function weekSummary(
   const notCounted = entries
     .filter((e) => !e.paid)
     .map((e) => scoreEntry(games, e, tiebreakerGameId))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }) || a.entryId - b.entryId);
   const playable = games.filter((g) => !isVoid(g));
   const gamesFinal = playable.filter((g) => g.status === 'final').length;
   const isFinal = games.length > 0 && gamesFinal === playable.length;

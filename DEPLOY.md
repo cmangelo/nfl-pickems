@@ -94,3 +94,5 @@ The app already locks a username after 5 wrong PINs, and lockouts get longer eac
 ## Schema changes later
 
 If a future change adds a migration (a new file in `drizzle/`), the next deploy applies it automatically (`vercel-build`). The manual `npm run db:migrate` (step 4) remains a fallback.
+
+Migrations run at the start of the build, while the previous deployment is still live. **Migration 0003 (multiple entries per week)** replaces the one-entry-per-player index, so the still-live old deployment can't save picks from the moment the migration runs until the new deployment is promoted (normally the length of the build, about a minute). Deploy it outside the Tuesday–Thursday pick window, or at least not close to a lock. If the build fails after migrating, redeploy promptly: the migration is safe to re-run.

@@ -38,15 +38,18 @@ describe('admin user/payment logic', () => {
     gameIds = w.games.map((g) => g.id);
   });
 
-  it('setPaid toggles an entry and reports a missing entry', async () => {
+  it('setPaid toggles one entry and reports a missing entry', async () => {
     const u = await makeUser('Ann');
-    expect(await setPaid(u.id, weekId, true)).toBe(false);
-    await makeEntry(u.id, weekId, 40, false, {});
-    expect(await setPaid(u.id, weekId, true)).toBe(true);
+    expect(await setPaid(9999, true)).toBe(false);
+    const e1 = await makeEntry(u.id, weekId, 40, false, {});
+    const e2 = await makeEntry(u.id, weekId, 41, false, {}, 2);
+    expect(await setPaid(e2.id, true)).toBe(true);
     const db = await getDb();
-    expect((await db.select().from(entries))[0].paid).toBe(true);
-    await setPaid(u.id, weekId, false);
-    expect((await db.select().from(entries))[0].paid).toBe(false);
+    const paidOf = async () => Object.fromEntries((await db.select().from(entries)).map((e) => [e.id, e.paid]));
+    expect(await paidOf()).toEqual({ [e1.id]: false, [e2.id]: true });
+    await setPaid(e1.id, true);
+    await setPaid(e2.id, false);
+    expect(await paidOf()).toEqual({ [e1.id]: true, [e2.id]: false });
   });
 
   it('resetPin validates, sets the hash and clears lockout', async () => {

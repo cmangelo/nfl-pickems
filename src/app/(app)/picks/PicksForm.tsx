@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useTransition } from 'react';
 import TeamLogo from '@/components/TeamLogo';
 import type { Side } from '@/lib/scoring';
 import { submitPicksAction, type SubmitState } from './actions';
@@ -29,6 +30,9 @@ export default function PicksForm({
   hasEntry,
   submitAction,
   savedMessage,
+  target,
+  savedHrefBase,
+  initialSaved = false,
 }: {
   weekId: number;
   days: FormDay[];
@@ -40,19 +44,37 @@ export default function PicksForm({
   /** Override the save action (admin editing another user's picks). */
   submitAction?: (picks: Record<number, Side>, tiebreaker: number) => Promise<SubmitState>;
   savedMessage?: string;
+  /** Which entry the default action saves: omitted = the first one, `{ entryId }`, or `{ newEntry: true }`. */
+  target?: { entryId?: number; newEntry?: boolean };
+  /** After a successful save, navigate to this URL + the saved entry id (used for a brand-new entry). */
+  savedHrefBase?: string;
+  /** Show the "saved" notice on mount (after navigating to a just-created entry). */
+  initialSaved?: boolean;
 }) {
+  const router = useRouter();
   const allGames = days.flatMap((d) => d.games);
   const [picks, setPicks] = useState<Record<number, Side>>(initialPicks);
   const [tb, setTb] = useState(initialTiebreaker === null ? '' : String(initialTiebreaker));
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
+  // A save that creates an entry navigates to it; until then the form must not save again (it would add another).
+  const [navigating, setNavigating] = useState(false);
+
+  // The "saved" notice came from ?saved=1 after creating an entry: drop the param so a reload doesn't repeat it.
+  useEffect(() => {
+    if (!initialSaved) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('saved')) return;
+    url.searchParams.delete('saved');
+    window.history.replaceState(window.history.state, '', url);
+  }, [initialSaved]);
 
   const pickedCount = allGames.filter((g) => picks[g.id]).length;
   const remaining = allGames.length - pickedCount;
   const tbValid = /^\d+$/.test(tb) && Number(tb) <= TB_MAX;
   const ready = remaining === 0 && tbValid;
-  const label = pending
+  const label = pending || navigating
     ? 'Saving…'
     : remaining > 0
       ? `Pick ${remaining} more`
@@ -68,13 +90,18 @@ export default function PicksForm({
   };
 
   const submit = () => {
-    if (!ready || pending) return;
+    if (!ready || pending || navigating) return;
     setError(null);
     startTransition(async () => {
       try {
-        const res = await (submitAction ? submitAction(picks, Number(tb)) : submitPicksAction(weekId, picks, Number(tb)));
-        if (res.ok) setSaved(true);
-        else {
+        const res = await (submitAction ? submitAction(picks, Number(tb)) : submitPicksAction(weekId, picks, Number(tb), target));
+        if (res.ok) {
+          setSaved(true);
+          if (savedHrefBase && res.entryId) {
+            setNavigating(true);
+            router.replace(`${savedHrefBase}${res.entryId}`);
+          }
+        } else {
           setSaved(false);
           setError(res.error);
         }
@@ -169,7 +196,7 @@ export default function PicksForm({
 
       <button
         type="submit"
-        disabled={!ready || pending}
+        disabled={!ready || pending || navigating}
         className="h-[54px] w-full rounded-xl bg-accent text-lg font-bold text-on-accent disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-muted"
       >
         {label}

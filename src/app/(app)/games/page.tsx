@@ -3,7 +3,7 @@ import RevealedCard from '@/components/RevealedCard';
 import TeamLogo from '@/components/TeamLogo';
 import { liveLabel } from '@/lib/game-view';
 import { requireUser } from '@/lib/auth';
-import { getEntry, listEntries } from '@/lib/picks';
+import { getEntries, listEntries } from '@/lib/picks';
 import type { Side } from '@/lib/scoring';
 import { getSelectedWeek, type GameRow } from '@/lib/selected-week';
 import { refreshWithBudget } from '@/lib/sync';
@@ -47,15 +47,18 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
   }
 
   const summary = await loadWeekSummary(week, games, t);
-  const mine = await getEntry(user.id, week.id); // the viewer's own side, even when unpaid
+  const mine = await getEntries(user.id, week.id); // the viewer's own sides, even when unpaid
   const counted = summary.ranked.length;
+  // "N counted players" unless someone has several paid entries, then count entries.
+  const countedPlayers = new Set(summary.ranked.map((e) => e.userId)).size;
+  const countedNoun = counted === countedPlayers ? `player${counted === 1 ? '' : 's'}` : 'entries';
 
   return (
     <div className="flex flex-col gap-3">
       <h1 className="sr-only">Games</h1>
       <div className="flex items-baseline justify-between">
         <h2 className="text-lg font-bold">Who picked what</h2>
-        <span data-testid="counted-players" className="text-sm text-muted">{counted} counted player{counted === 1 ? '' : 's'}</span>
+        <span data-testid="counted-players" className="text-sm text-muted">{counted} counted {countedNoun}</span>
       </div>
       <p data-testid="games-status" className="-mt-2 text-sm text-muted">
         {summary.isFinal ? 'Final' : 'In progress'} · {summary.gamesFinal} of {summary.gamesTotal} games final
@@ -64,7 +67,8 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
       {games.map((g) => {
         const split = summary.splits[g.id] ?? { home: 0, away: 0 };
         const total = split.home + split.away;
-        const myPick: Side | undefined = mine?.picks[g.id];
+        // How many of the viewer's entries took each side (usually one entry: 0 or 1).
+        const myCount = (s: Side) => mine.filter((e) => e.picks[g.id] === s).length;
         const settled = g.status === 'final' && g.winner !== null;
         const live = liveLabel(g);
         // Final score once settled; ESPN's in-game score while live (display only, never scored).
@@ -76,11 +80,13 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
           const other = scoreOf(s === 'home' ? 'away' : 'home');
           const trailing = score !== null && other !== null && score < other;
           const count = split[s];
+          const yours = myCount(s);
           return (
             <div
               data-testid={`split-${g.id}-${s}`}
               data-winner={won}
-              data-yours={myPick === s}
+              data-yours={yours > 0}
+              data-yours-count={yours}
               className={`flex-1 rounded-lg border px-2 py-2 ${s === 'home' ? 'text-right' : ''} ${
                 won ? 'border-correct/60 bg-correct/10' : 'border-border bg-surface-2'
               }`}
@@ -99,12 +105,12 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
                 {won && <span className="sr-only">(winner)</span>}
               </div>
               <div className="text-sm">{count} picked {team}</div>
-              {myPick === s && (
+              {yours > 0 && (
                 <span
-                  data-testid={`your-pick-${g.id}`}
+                  data-testid={mine.length > 1 ? `your-pick-${g.id}-${s}` : `your-pick-${g.id}`}
                   className="mt-1 inline-block rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase text-on-accent"
                 >
-                  Your pick
+                  Your pick{mine.length > 1 && <> ×{yours}<span className="sr-only"> (entries)</span></>}
                 </span>
               )}
             </div>

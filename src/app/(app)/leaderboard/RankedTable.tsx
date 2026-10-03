@@ -3,7 +3,8 @@ import { tiebreakerDiffLabel } from '@/lib/leaderboard-view';
 import type { RankedEntry, ScoredEntry } from '@/lib/scoring';
 import { rankLabel } from '@/lib/week-view';
 
-const href = (userId: number, weekId: number) => `/leaderboard/player/${userId}?week=${weekId}`;
+const href = (e: { userId: number; entryId: number }, weekId: number) =>
+  `/leaderboard/player/${e.userId}?week=${weekId}&entry=${e.entryId}`;
 
 export function RankedTable({
   ranked,
@@ -34,10 +35,10 @@ export function RankedTable({
       </div>
       <ol>
         {ranked.map((e) => (
-          <li key={e.userId} className="border-b border-border last:border-b-0">
+          <li key={e.entryId} className="border-b border-border last:border-b-0">
             <Link
-              href={href(e.userId, weekId)}
-              data-testid={`rank-row-${e.userId}`}
+              href={href(e, weekId)}
+              data-testid={`rank-row-${e.entryId}`}
               aria-label={`${e.name}, ${rankLabel(e.rank, e.tied)}, ${e.correct} correct. View picks`}
               className={`grid grid-cols-[3.5rem_1fr_auto_3rem] items-center gap-2 px-3 py-3 ${
                 e.userId === viewerId ? 'bg-accent/10' : ''
@@ -71,10 +72,10 @@ export function NotCounted({ entries, weekId }: { entries: ScoredEntry[]; weekId
       <p className="mb-2 text-xs text-muted">These entries are left out of the standings until an admin marks them paid.</p>
       <ul className="rounded-xl border border-border bg-surface opacity-60">
         {entries.map((e) => (
-          <li key={e.userId} className="border-b border-border last:border-b-0">
+          <li key={e.entryId} className="border-b border-border last:border-b-0">
             <Link
-              href={href(e.userId, weekId)}
-              data-testid={`unpaid-row-${e.userId}`}
+              href={href(e, weekId)}
+              data-testid={`unpaid-row-${e.entryId}`}
               className="flex items-center justify-between px-3 py-3"
             >
               <span>{e.name}</span>

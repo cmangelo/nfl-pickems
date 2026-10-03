@@ -7,15 +7,15 @@ import { weeks } from '@/db/schema';
 import * as admin from '@/lib/admin';
 import { requireAdmin } from '@/lib/auth';
 import { getEspnClient } from '@/lib/espn';
-import { isId } from '@/lib/validate';
-import { submitPicks } from '@/lib/picks';
+import { isId, parseEntryTarget } from '@/lib/validate';
+import { deleteEntry, submitPicks } from '@/lib/picks';
 import { importSeason, loadSeasonSchedule } from '@/lib/schedule';
 import type { Side } from '@/lib/scoring';
 import { adminOverrideGame, clearOverride, syncScores, voidGame } from '@/lib/sync';
 import { now } from '@/lib/time';
 import { setWeekLockOverride } from '@/lib/weeks';
 
-export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
+export type ActionResult = { ok: true; message?: string; entryId?: number } | { ok: false; error: string };
 
 const bad = (error: string): ActionResult => ({ ok: false, error });
 const INVALID = 'Invalid request.';
@@ -27,10 +27,20 @@ function refresh() {
   revalidatePath('/leaderboard');
 }
 
-export async function setPaidAction(userId: number, weekId: number, paid: boolean): Promise<ActionResult> {
+export async function setPaidAction(entryId: number, paid: boolean): Promise<ActionResult> {
   await requireAdmin();
-  if (!isId(userId) || !isId(weekId)) return bad(INVALID);
-  if (!(await admin.setPaid(Number(userId), Number(weekId), !!paid))) return bad('Entry not found.');
+  if (!isId(entryId)) return bad(INVALID);
+  if (!(await admin.setPaid(Number(entryId), !!paid))) return bad('Entry not found.');
+  refresh();
+  return { ok: true };
+}
+
+/** Deletes any entry (and its picks), at any time. */
+export async function adminDeleteEntryAction(entryId: number): Promise<ActionResult> {
+  await requireAdmin();
+  if (!isId(entryId)) return bad(INVALID);
+  const res = await deleteEntry(Number(entryId), { now: await now(), asAdmin: true });
+  if (!res.ok) return res;
   refresh();
   return { ok: true };
 }
@@ -110,23 +120,26 @@ export async function clearOverrideAction(gameId: number): Promise<ActionResult>
   return { ok: true };
 }
 
+/** `target`: omitted = the player's first entry, `{ entryId }` = that entry, `{ newEntry: true }` = add one. */
 export async function adminSubmitPicksAction(
   userId: number,
   weekId: number,
+  target: { entryId?: number; newEntry?: boolean } | undefined,
   picks: Record<number, Side>,
   tiebreaker: number,
 ): Promise<ActionResult> {
   const me = await requireAdmin();
-  if (!isId(userId) || !isId(weekId) || !picks || typeof picks !== 'object') return bad(INVALID);
+  const t = parseEntryTarget(target);
+  if (!isId(userId) || !isId(weekId) || !picks || typeof picks !== 'object' || !t) return bad(INVALID);
   const res = await submitPicks(
     Number(userId),
     Number(weekId),
     { picks, tiebreaker: Number(tiebreaker) },
-    { now: await now(), asAdmin: true, actorId: me.id },
+    { now: await now(), asAdmin: true, actorId: me.id, ...t },
   );
   if (!res.ok) return bad(res.message);
   refresh();
-  return { ok: true };
+  return { ok: true, entryId: res.entryId };
 }
 
 export async function resetPinAction(userId: number, pin: string): Promise<ActionResult> {

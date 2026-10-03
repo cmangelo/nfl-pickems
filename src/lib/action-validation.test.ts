@@ -33,14 +33,15 @@ describe('admin actions reject malformed ids with a validation error (no DB erro
   it('every id-taking action', async () => {
     for (const bad of BAD) {
       const b = bad as number;
-      expect(await a.setPaidAction(b, 1, true), `setPaid user ${String(bad)}`).toEqual(INVALID);
-      expect(await a.setPaidAction(1, b, true), `setPaid week ${String(bad)}`).toEqual(INVALID);
+      expect(await a.setPaidAction(b, true), `setPaid entry ${String(bad)}`).toEqual(INVALID);
+      expect(await a.adminDeleteEntryAction(b), `deleteEntry ${String(bad)}`).toEqual(INVALID);
       expect(await a.syncNowAction(b), 'syncNow').toEqual(INVALID);
       expect(await a.setLockAction(b, null), 'setLock').toEqual(INVALID);
       expect(await a.overrideGameAction(b, 1, 0, 'home'), 'override').toEqual(INVALID);
       expect(await a.clearOverrideAction(b), 'clearOverride').toEqual(INVALID);
-      expect(await a.adminSubmitPicksAction(b, 1, {}, 40), 'adminSubmit user').toEqual(INVALID);
-      expect(await a.adminSubmitPicksAction(1, b, {}, 40), 'adminSubmit week').toEqual(INVALID);
+      expect(await a.adminSubmitPicksAction(b, 1, undefined, {}, 40), 'adminSubmit user').toEqual(INVALID);
+      expect(await a.adminSubmitPicksAction(1, b, undefined, {}, 40), 'adminSubmit week').toEqual(INVALID);
+      expect(await a.adminSubmitPicksAction(1, 1, { entryId: b }, {}, 40), 'adminSubmit entry').toEqual(INVALID);
       expect(await a.resetPinAction(b, '1234'), 'resetPin').toEqual(INVALID);
       expect(await a.setAdminAction(b, true), 'setAdmin').toEqual(INVALID);
       expect(await a.removeUserAction(b), 'removeUser').toEqual(INVALID);
@@ -48,7 +49,8 @@ describe('admin actions reject malformed ids with a validation error (no DB erro
   });
 
   it('a well-formed id for a missing row is a normal error, not a throw', async () => {
-    expect(await a.setPaidAction(999, 999, true)).toEqual({ ok: false, error: 'Entry not found.' });
+    expect(await a.setPaidAction(999, true)).toEqual({ ok: false, error: 'Entry not found.' });
+    expect(await a.adminDeleteEntryAction(999)).toEqual({ ok: false, error: 'Entry not found.' });
   });
 });
 
@@ -57,5 +59,25 @@ describe('picks action', () => {
     const { submitPicksAction } = await import('@/app/(app)/picks/actions');
     for (const bad of BAD) expect(await submitPicksAction(bad as number, {}, 40), String(bad)).toEqual({ ok: false, error: 'Invalid request.' });
     expect(await submitPicksAction(1, null as never, 40)).toEqual({ ok: false, error: 'Invalid request.' });
+  });
+
+  it('rejects a malformed entry target or entry id', async () => {
+    const { deleteEntryAction, submitPicksAction } = await import('@/app/(app)/picks/actions');
+    const targets: unknown[] = [...BAD.filter((b) => b !== null && b !== undefined).map((b) => ({ entryId: b })), 'x', [1], { newEntry: 'yes' }, { newEntry: true, entryId: 1 }];
+    for (const t of targets) expect(await submitPicksAction(1, {}, 40, t as never), JSON.stringify(t)).toEqual(INVALID);
+    for (const bad of BAD) expect(await deleteEntryAction(bad as number), String(bad)).toEqual(INVALID);
+  });
+});
+
+describe('parseEntryTarget', () => {
+  it('accepts omitted, { entryId } and { newEntry: true } only', async () => {
+    const { parseEntryTarget } = await import('./validate');
+    expect(parseEntryTarget(undefined)).toEqual({});
+    expect(parseEntryTarget(null)).toEqual({});
+    expect(parseEntryTarget({ entryId: 7 })).toEqual({ entryId: 7 });
+    expect(parseEntryTarget({ newEntry: true })).toEqual({ newEntry: true });
+    for (const t of [{}, { entryId: 0 }, { entryId: '7' }, { newEntry: false }, { newEntry: true, entryId: 7 }, 5, 'new']) {
+      expect(parseEntryTarget(t), JSON.stringify(t)).toBeNull();
+    }
   });
 });

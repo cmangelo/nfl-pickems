@@ -19,6 +19,10 @@ export default async function AdminPaymentsPage({ searchParams }: { searchParams
         key={week.id}
         weekId={week.id}
         entries={entries.map((e) => ({
+          entryId: e.entryId,
+          entryIndex: e.entryIndex,
+          entryCount: e.entryCount,
+          label: e.label,
           userId: e.userId,
           firstName: e.firstName,
           username: e.username,

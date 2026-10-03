@@ -34,16 +34,23 @@ export default async function WeeksPage({
       <ul className="overflow-hidden rounded-xl border border-border bg-surface">
         {rows.map(({ v, summary }) => {
           const { week, state } = v;
-          const mine = [...summary.ranked, ...summary.notCounted].find((e) => e.userId === user.id);
-          const ranked = summary.ranked.find((e) => e.userId === user.id);
+          // A player may have several entries: list each one's score (and rank, when paid).
+          const mine = [...summary.ranked, ...summary.notCounted]
+            .filter((e) => e.userId === user.id)
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
           const won = state === 'final' && summary.winners.some((e) => e.userId === user.id);
+          const rankOf = (entryId: number) => summary.ranked.find((e) => e.entryId === entryId);
           let you: string;
-          if (!mine) you = state === 'open' ? "You haven't picked yet" : "You didn't play";
-          else if (state === 'open') you = 'You: picks submitted';
-          else if (state === 'final') {
-            you = `You: ${mine.correct}/${summary.gamesTotal}${ranked ? ` · ${rankLabel(ranked.rank, ranked.tied)}` : ''}`;
-          } else {
-            you = `You: ${mine.correct} so far${ranked ? ` · ${rankLabel(ranked.rank, ranked.tied)}` : ''}`;
+          if (mine.length === 0) you = state === 'open' ? "You haven't picked yet" : "You didn't play";
+          else if (state === 'open') you = mine.length > 1 ? `You: ${mine.length} entries submitted` : 'You: picks submitted';
+          else {
+            const parts = mine.map((m) => {
+              const r = rankOf(m.entryId);
+              const score = state === 'final' ? `${m.correct}/${summary.gamesTotal}` : `${m.correct}${mine.length > 1 ? '' : ' so far'}`;
+              const rank = r ? rankLabel(r.rank, r.tied) : null;
+              return mine.length > 1 ? `${score}${rank ? ` (${rank})` : ''}` : `${score}${rank ? ` · ${rank}` : ''}`;
+            });
+            you = `You: ${parts.join(' · ')}${mine.length > 1 && state !== 'final' ? ' so far' : ''}`;
           }
           const winners = state === 'final' ? summary.winners.map((w) => w.name) : [];
           return (

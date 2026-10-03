@@ -52,7 +52,7 @@ export default function LockedPicks({
       </p>
     );
   }
-  const scored = scoreEntry(games, { userId: entry.userId, name: userName, paid: entry.paid, tiebreaker: entry.tiebreaker, picks: entry.picks });
+  const scored = scoreEntry(games, { entryId: entry.entryId, userId: entry.userId, name: userName, paid: entry.paid, tiebreaker: entry.tiebreaker, picks: entry.picks });
   const editedLabel = adminEditLabel(entry.editedByName, entry.adminEditedAt);
   const chip = (n: number, label: string, id: string) => (
     <div data-testid={id} className="flex-1 rounded-xl border border-border bg-surface px-3 py-2">

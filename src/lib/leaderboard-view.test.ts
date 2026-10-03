@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatUpdatedAgo,
   joinNames,
-  playersLabel,
+  entriesLabel,
   tiebreakerDiffLabel,
   upsetHeadline,
   upsetRightText,
@@ -34,9 +34,9 @@ describe('names and plurals', () => {
     expect(joinNames(['A', 'B'])).toBe('A and B');
     expect(joinNames(['A', 'B', 'C'])).toBe('A, B and C');
   });
-  it('pluralizes players', () => {
-    expect(playersLabel(1)).toBe('1 player');
-    expect(playersLabel(8)).toBe('8 players');
+  it('pluralizes entries', () => {
+    expect(entriesLabel(1)).toBe('1 entry');
+    expect(entriesLabel(8)).toBe('8 entries');
   });
   it('formats the tiebreaker diff', () => {
     expect(tiebreakerDiffLabel(null)).toBe('');
@@ -52,10 +52,10 @@ describe('upset phrasing', () => {
     expect(upsetHeadline({ homeTeam: 'LV', awayTeam: 'CHI', homeScore: 20, awayScore: 20, winner: 'tie' })).toBeNull();
   });
   it('wrong / right texts never use "of N"', () => {
-    expect(upsetWrongText({ wrongCount: 8 })).toBe('8 players got it wrong');
-    expect(upsetWrongText({ wrongCount: 1 })).toBe('1 player got it wrong');
-    expect(upsetRightText({ correctCount: 1, correctNames: ['Sarah'] })).toBe('Only 1 player picked it (Sarah)');
-    expect(upsetRightText({ correctCount: 2, correctNames: ['Al', 'Bo'] })).toBe('Only 2 players picked it (Al and Bo)');
+    expect(upsetWrongText({ wrongCount: 8 })).toBe('8 entries got it wrong');
+    expect(upsetWrongText({ wrongCount: 1 })).toBe('1 entry got it wrong');
+    expect(upsetRightText({ correctCount: 1, correctNames: ['Sarah'] })).toBe('Only 1 entry picked it (Sarah)');
+    expect(upsetRightText({ correctCount: 2, correctNames: ['Al', 'Bo'] })).toBe('Only 2 entries picked it (Al and Bo)');
     expect(upsetRightText({ correctCount: 0, correctNames: [] })).toBe('Nobody picked it');
     expect(upsetRightText({ correctCount: 5, correctNames: null })).toBeNull();
   });

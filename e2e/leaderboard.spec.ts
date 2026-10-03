@@ -154,8 +154,8 @@ test('final recap: co-winners, stats, upset with names, tiebreaker diff, unpaid 
   await expect(page.getByTestId('stat-fewest')).toContainText('Cy');
   // Upset: g3 home won; Cy picked away (wrong) and Bob picked away (wrong); Ann right => 2 wrong. g2 (away won): Ann wrong => 1.
   await expect(page.getByTestId('upset-headline')).toContainText(/\w+ over \w+, 27–17/);
-  await expect(page.getByTestId('upset-wrong')).toHaveText('2 players got it wrong');
-  await expect(page.getByTestId('upset-right')).toHaveText('Only 1 player picked it (Ann)');
+  await expect(page.getByTestId('upset-wrong')).toHaveText('2 entries got it wrong');
+  await expect(page.getByTestId('upset-right')).toHaveText('Only 1 entry picked it (Ann)');
   await expect(page.getByTestId('mnf-total')).toContainText('44 total points');
   const rows = page.locator('[data-testid^="rank-row-"]');
   await expect(rows.nth(0)).toContainText('1st');
