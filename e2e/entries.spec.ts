@@ -266,8 +266,8 @@ test('@smoke locked week: each entry is ranked, shown, split and listed on its o
   // Games: splits count paid entries; "Your pick ×N" shows how many of my entries took each side.
   await page.goto(`/games?week=${weekId}`);
   await expect(page.getByTestId('counted-players')).toHaveText('3 counted entries');
-  await expect(page.getByTestId(`split-${gameIds[0]}-home`)).toContainText('2 picked');
-  await expect(page.getByTestId(`split-${gameIds[0]}-away`)).toContainText('1 picked');
+  await expect(page.getByTestId(`split-${gameIds[0]}-home`)).toContainText('2 entries');
+  await expect(page.getByTestId(`split-${gameIds[0]}-away`)).toContainText('1 entry');
   await expect(page.getByTestId(`your-pick-${gameIds[0]}-away`)).toHaveText('Your pick ×2 (entries)');
   await expect(page.getByTestId(`your-pick-${gameIds[0]}-home`)).toHaveText('Your pick ×1 (entries)');
   await expect(page.getByTestId(`split-${gameIds[2]}-home`)).toHaveAttribute('data-yours-count', '2');
@@ -288,4 +288,45 @@ test('@smoke locked week: each entry is ranked, shown, split and listed on its o
   await page.goto('/weeks');
   await expect(page.getByTestId('week-row-7')).toContainText('You won');
   await expect(page.getByTestId('week-row-7')).toContainText('Winner: Ann (1)');
+});
+
+test('@smoke games: splits count every paid entry, with a two-color bar and percentages', async ({ page, context, request }) => {
+  const { weekId, gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  const [g0, g1] = gameIds;
+  await createUser(request, 'Ann', 'ann');
+  await createUser(request, 'Bob', 'bob');
+  // Ann has three paid entries on g0's home side; Bob one on the away side. Everyone picks g1 home.
+  await submitPicksFor(request, 'ann', weekId, [H, H], 40);
+  await submitPicksFor(request, 'ann', weekId, [H, H], 41, 'new');
+  await submitPicksFor(request, 'ann', weekId, [H, H], 42, 'new');
+  await submitPicksFor(request, 'bob', weekId, [A, H], 30);
+  await setPaid(request, 'ann', weekId, true);
+  await setPaid(request, 'bob', weekId, true);
+  await setNow(context, FRI);
+  await loginAs(page, 'bob');
+  await page.goto(`/games?week=${weekId}`);
+
+  await expect(page.getByTestId('counted-players')).toHaveText('4 counted entries');
+  await expect(page.getByTestId(`split-${g0}-home`)).toContainText('3 entries');
+  await expect(page.getByTestId(`split-${g0}-away`)).toContainText('1 entry');
+  await expect(page.getByTestId(`split-pct-${g0}-away`)).toHaveText(/ 25%$/);
+  await expect(page.getByTestId(`split-pct-${g0}-home`)).toHaveText(/ 75%$/);
+  await expect(page.getByTestId(`split-bar-${g0}`)).toHaveAttribute('aria-label', /^1 entry picked \w+ \(25%\), 3 entries picked \w+ \(75%\)$/);
+
+  // Two distinct segment colors, sized by share.
+  const away = page.getByTestId(`split-seg-${g0}-away`);
+  const home = page.getByTestId(`split-seg-${g0}-home`);
+  const color = (l: typeof away) => l.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await color(away)).toBe('rgb(57, 135, 229)');
+  expect(await color(home)).toBe('rgb(217, 89, 38)');
+  const wAway = (await away.boundingBox())!.width;
+  const wHome = (await home.boundingBox())!.width;
+  expect(wHome / wAway).toBeGreaterThan(2.7);
+  expect(wHome / wAway).toBeLessThan(3.3);
+
+  // One-sided game: a single full segment, 0% / 100%.
+  await expect(page.getByTestId(`split-seg-${g1}-away`)).toHaveCount(0);
+  await expect(page.getByTestId(`split-pct-${g1}-away`)).toHaveText(/ 0%$/);
+  await expect(page.getByTestId(`split-pct-${g1}-home`)).toHaveText(/ 100%$/);
+  await expectNoPlayerCountOf(page);
 });

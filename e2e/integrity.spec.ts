@@ -174,7 +174,7 @@ test('M7: postponed games stay pending; a voided game counts for nobody and the 
   await page.goto(`/games?week=${weekId}`);
   await expect(page.getByTestId(`game-status-${gameIds[1]}`)).toHaveText('Void');
   await expect(page.getByTestId(`game-card-${gameIds[1]}`)).toHaveAttribute('data-void', 'true');
-  await expect(page.getByTestId(`split-${gameIds[1]}-home`)).toContainText('1 picked');
+  await expect(page.getByTestId(`split-${gameIds[1]}-home`)).toContainText('1 entry');
   await expect(page.getByTestId('games-status')).toContainText('1 of 2 games final');
   await page.goto(`/leaderboard?week=${weekId}`);
   await expect(page.getByTestId('live-status')).toContainText('1 of 2 games final');

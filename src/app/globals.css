@@ -12,6 +12,9 @@
   --on-accent: #1a1300;
   --correct: #22c55e;
   --wrong: #ef4444;
+  /* Pick-split bar on Games: away / home. Validated pair (CVD + contrast) on --surface; not status colors. */
+  --split-away: #3987e5;
+  --split-home: #d95926;
 }
 
 @theme inline {
