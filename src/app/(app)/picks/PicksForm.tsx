@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import TeamLogo from '@/components/TeamLogo';
 import type { Side } from '@/lib/scoring';
@@ -29,6 +30,9 @@ export default function PicksForm({
   hasEntry,
   submitAction,
   savedMessage,
+  target,
+  savedHrefBase,
+  initialSaved = false,
 }: {
   weekId: number;
   days: FormDay[];
@@ -40,12 +44,19 @@ export default function PicksForm({
   /** Override the save action (admin editing another user's picks). */
   submitAction?: (picks: Record<number, Side>, tiebreaker: number) => Promise<SubmitState>;
   savedMessage?: string;
+  /** Which entry the default action saves: omitted = the first one, `{ entryId }`, or `{ newEntry: true }`. */
+  target?: { entryId?: number; newEntry?: boolean };
+  /** After a successful save, navigate to this URL + the saved entry id (used for a brand-new entry). */
+  savedHrefBase?: string;
+  /** Show the "saved" notice on mount (after navigating to a just-created entry). */
+  initialSaved?: boolean;
 }) {
+  const router = useRouter();
   const allGames = days.flatMap((d) => d.games);
   const [picks, setPicks] = useState<Record<number, Side>>(initialPicks);
   const [tb, setTb] = useState(initialTiebreaker === null ? '' : String(initialTiebreaker));
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
 
   const pickedCount = allGames.filter((g) => picks[g.id]).length;
@@ -72,9 +83,11 @@ export default function PicksForm({
     setError(null);
     startTransition(async () => {
       try {
-        const res = await (submitAction ? submitAction(picks, Number(tb)) : submitPicksAction(weekId, picks, Number(tb)));
-        if (res.ok) setSaved(true);
-        else {
+        const res = await (submitAction ? submitAction(picks, Number(tb)) : submitPicksAction(weekId, picks, Number(tb), target));
+        if (res.ok) {
+          setSaved(true);
+          if (savedHrefBase && res.entryId) router.replace(`${savedHrefBase}${res.entryId}`);
+        } else {
           setSaved(false);
           setError(res.error);
         }

@@ -24,14 +24,10 @@ export function fromPtInputValue(value: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Sets the paid flag on a user's entry for a week. False if there is no such entry. */
-export async function setPaid(userId: number, weekId: number, paid: boolean): Promise<boolean> {
+/** Sets the paid flag on one entry (each entry is a separate fee). False if there is no such entry. */
+export async function setPaid(entryId: number, paid: boolean): Promise<boolean> {
   const db = await getDb();
-  const rows = await db
-    .update(entries)
-    .set({ paid })
-    .where(and(eq(entries.userId, userId), eq(entries.weekId, weekId)))
-    .returning({ id: entries.id });
+  const rows = await db.update(entries).set({ paid }).where(eq(entries.id, entryId)).returning({ id: entries.id });
   return rows.length > 0;
 }
 

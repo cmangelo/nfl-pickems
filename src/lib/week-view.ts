@@ -51,3 +51,11 @@ export function adminEditLabel(editedByName: string | null, editedAt: Date | nul
 export function gameStatusLabel(status: 'scheduled' | 'final' | 'postponed' | 'void'): string | null {
   return status === 'postponed' ? 'Postponed' : status === 'void' ? 'Void' : null;
 }
+
+/**
+ * Display name for one of a player's entries in a week: just "Chris" when they have one entry,
+ * "Chris (1)", "Chris (2)"... when they have several. `index` is 0-based in entry order.
+ */
+export function entryLabel(firstName: string, index: number, count: number): string {
+  return count > 1 ? `${firstName} (${index + 1})` : firstName;
+}

@@ -50,9 +50,10 @@ export async function makeEntry(
   tiebreaker: number,
   paid: boolean,
   pickMap: Record<number, 'home' | 'away'>,
+  entryNo = 1,
 ) {
   const db = await getDb();
-  const [e] = await db.insert(entries).values({ userId, weekId, tiebreaker, paid }).returning();
+  const [e] = await db.insert(entries).values({ userId, weekId, entryNo, tiebreaker, paid }).returning();
   const rows = Object.entries(pickMap).map(([g, p]) => ({ entryId: e.id, gameId: Number(g), pick: p }));
   if (rows.length) await db.insert(picks).values(rows);
   return e;

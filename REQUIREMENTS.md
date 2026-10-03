@@ -35,13 +35,14 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 - **Tiebreaker:** the user enters a guess for total points (both teams combined) in the Monday night game. If there is more than one Monday game, the tiebreaker uses the last one to kick off.
 - Picks are submitted as one complete form: **every game must be picked and a tiebreaker entered**. Partial submissions are not allowed.
 - Picks can be edited freely until the lock.
+- **Multiple entries (rare):** a player may submit more than one set of picks for a week (up to 10). Each entry is a separate entry fee, has its own picks and tiebreaker, and is paid, ranked and shown on its own. A new entry can start blank or as a copy of one of the player's entries. Players can add or remove extra entries until the lock (never their last one); admins can add or delete entries at any time. With one entry, nothing about the page changes.
 - The page shows a countdown to the lock and the user's progress (for example, "11/16 picked").
 - Before the lock, users can see only their own picks. After the lock, everyone's picks are visible.
 
 ## 4. Scoring and winner
 
 - One point per correct pick.
-- Each week is ranked separately. **Only users who submitted picks that week and are marked paid** are counted.
+- Each week is ranked separately. **Only entries that are marked paid** are counted. A player with several entries appears once per entry ("Chris (1)", "Chris (2)"); two of their entries can share a rank, including co-winners.
 - **Participation is opt-in each week.** Registered users aren't expected to play every week. Nobody is counted as "missing" for not submitting, and the UI never shows an "X of [total users]" figure.
 - Ranking order:
   1. Most correct picks.
@@ -63,7 +64,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 
 - After the lock, the week's page becomes a **live leaderboard** that updates as each game goes final. For example: Thursday night, then the Sunday early games, then the late games, then Sunday night, then Monday.
 - It shows each player's correct picks so far and their tiebreaker guess. Tap a player to see all their picks, marked right, wrong or pending.
-- A **Games** view shows each game's result and the pick split as **counts only** (for example, "18 picked TB · 12 picked ATL") with a split bar. **No name lists**: there can be 30+ players, so names don't scale. The logged-in user's side is clearly highlighted (for example, a "Your pick" marker on that side). To see who picked what, tap a player on the Leaderboard.
+- A **Games** view shows each game's result and the pick split as **counts only** (for example, "18 picked TB · 12 picked ATL") with a split bar. **No name lists**: there can be 30+ players, so names don't scale. The logged-in user's side is clearly highlighted (for example, a "Your pick" marker on that side; with several entries it shows how many took each side, e.g. "Your pick ×2" and "Your pick ×1"). To see who picked what, tap a player on the Leaderboard.
 - Ranking uses correct picks so far. Players with the same count share a rank (for example, "T-1st"). The Monday-night tiebreaker only applies once that game is final.
 - Shows "Updated X min ago · N of M games final".
 - Unpaid entries appear greyed out as "not counted" until an admin marks them paid.
@@ -76,6 +77,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 ## 7. Admin
 
 - **Payments (per week):** see everyone who submitted picks that week and check each one off as paid or unpaid. Show "N paid · M unpaid" rather than "N of total". Don't list "didn't submit" users (the mocks do; drop it).
+  - Payment is tracked **per entry**: a player with several entries has one paid switch per entry, grouped under their name, and the summary counts entries.
   - Every entry starts **unpaid**. Players are expected to pay by Thursday, but payments are collected outside the app.
   - Payment status can be changed **at any time**, for any week. It never locks.
   - Unpaid entries are left out of that week's results. The user isn't removed and can still play other weeks.

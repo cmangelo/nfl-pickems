@@ -85,13 +85,17 @@ export async function submitPicksFor(
   weekId: number,
   picks: ('home' | 'away')[] | Record<number, 'home' | 'away'>,
   tiebreaker: number,
-) {
-  const res = await request.post('/api/test/submit-picks', { data: { username, weekId, picks, tiebreaker } });
+  /** Omitted = the user's first entry; 'new' = add an entry; a number = that entry_no. */
+  entry?: 'new' | number,
+): Promise<{ entryId: number }> {
+  const res = await request.post('/api/test/submit-picks', { data: { username, weekId, picks, tiebreaker, entry } });
   expect(res.ok(), `submit picks for ${username}: ${await res.text()}`).toBeTruthy();
+  return res.json();
 }
 
-export async function setPaid(request: APIRequestContext, username: string, weekId: number, paid = true) {
-  const res = await request.post('/api/test/set-paid', { data: { username, weekId, paid } });
+/** Marks one entry_no, or (omitted) every entry of the user that week. */
+export async function setPaid(request: APIRequestContext, username: string, weekId: number, paid = true, entryNo?: number) {
+  const res = await request.post('/api/test/set-paid', { data: { username, weekId, paid, entryNo } });
   expect(res.ok(), `set paid ${username}`).toBeTruthy();
 }
 

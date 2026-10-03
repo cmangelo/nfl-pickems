@@ -16,8 +16,8 @@ function game(id: number, kickoff: string, over: Partial<ScoringGame> = {}): Sco
 const fin = (id: number, kickoff: string, h: number, a: number) =>
   game(id, kickoff, { homeScore: h, awayScore: a, status: 'final', winner: h === a ? 'tie' : h > a ? 'home' : 'away' });
 
-function entry(userId: number, name: string, picks: Record<number, 'home' | 'away'>, tiebreaker = 40, paid = true): ScoringEntry {
-  return { userId, name, paid, tiebreaker, picks };
+function entry(userId: number, name: string, picks: Record<number, 'home' | 'away'>, tiebreaker = 40, paid = true, entryId = userId): ScoringEntry {
+  return { entryId, userId, name, paid, tiebreaker, picks };
 }
 
 // Thu (PT), Sun, Mon night PT (2026-10-13T00:20Z = Mon 5:20 PM PDT)
@@ -243,5 +243,40 @@ describe('void and postponed games', () => {
     expect(frozen.tiebreakerGameId).toBe(1);
     expect(frozen.tiebreakerActualTotal).toBe(30);
     expect(frozen.ranked.map((r) => r.name)).toEqual(['Ann', 'Bob']);
+  });
+});
+
+describe('several entries from one player', () => {
+  const gs = [fin(1, THU, 20, 10), fin(2, SUN, 10, 20), fin(3, MON, 21, 24)]; // home, away, away; total 45
+  // Ann has three entries: two paid, one unpaid. Bob has one.
+  const es = [
+    entry(1, 'Ann (1)', { 1: 'home', 2: 'away', 3: 'away' }, 45, true, 11),
+    entry(1, 'Ann (2)', { 1: 'away', 2: 'away', 3: 'away' }, 40, true, 12),
+    entry(1, 'Ann (3)', { 1: 'away', 2: 'home', 3: 'home' }, 40, false, 13),
+    entry(2, 'Bob', { 1: 'home', 2: 'away', 3: 'home' }, 52, true, 20),
+  ];
+
+  it('ranks each paid entry on its own; unpaid ones are not counted', () => {
+    const s = weekSummary(gs, es);
+    expect(s.ranked.map((e) => [e.entryId, e.name, e.correct, e.rank])).toEqual([
+      [11, 'Ann (1)', 3, 1],
+      [12, 'Ann (2)', 2, 2],
+      [20, 'Bob', 2, 3], // same correct as Ann (2), farther from 45
+    ]);
+    expect(s.notCounted.map((e) => e.entryId)).toEqual([13]);
+    expect(s.winners.map((e) => e.name)).toEqual(['Ann (1)']);
+    expect(s.stats?.countedEntries).toBe(3);
+  });
+
+  it('counts every paid entry in the splits', () => {
+    const s = weekSummary(gs, es);
+    expect(s.splits[1]).toEqual({ home: 2, away: 1 });
+    expect(s.splits[3]).toEqual({ home: 1, away: 2 });
+  });
+
+  it('two entries of one player can share a rank (co-winners)', () => {
+    const twins = [es[0], { ...es[1], picks: es[0].picks, tiebreaker: 45 }];
+    const r = rankEntries(gs, twins);
+    expect(r.map((e) => [e.entryId, e.rank, e.tied])).toEqual([[11, 1, true], [12, 1, true]]);
   });
 });

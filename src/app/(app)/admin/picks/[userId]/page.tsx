@@ -6,25 +6,30 @@ import { getDb } from '@/db';
 import { users } from '@/db/schema';
 import { isId } from '@/lib/validate';
 import NoWeeks from '@/components/NoWeeks';
-import { getEntry } from '@/lib/picks';
+import { selectEntry } from '@/lib/entry-select';
+import { getEntries } from '@/lib/picks';
 import { requireAdmin } from '@/lib/auth';
 import { getSelectedWeek } from '@/lib/selected-week';
 import { formatPT } from '@/lib/time';
 import { resolveTiebreakerGame } from '@/lib/weeks';
 import { groupGamesByPtDay } from '@/lib/week-view';
+import AddEntryCard from '../../../picks/AddEntryCard';
+import EntryTabs from '../../../picks/EntryTabs';
 import PicksForm from '../../../picks/PicksForm';
-import { adminSubmitPicksAction } from '../../actions';
+import RemoveEntryButton from '../../../picks/RemoveEntryButton';
+import { adminDeleteEntryAction, adminSubmitPicksAction } from '../../actions';
 
 export default async function AdminEditPicksPage({
   params,
   searchParams,
 }: {
   params: Promise<{ userId: string }>;
-  searchParams: Promise<{ week?: string | string[] }>;
+  searchParams: Promise<{ week?: string | string[]; entry?: string | string[]; copy?: string | string[]; saved?: string | string[] }>;
 }) {
   const me = await requireAdmin();
   const { userId: rawId } = await params;
-  const { week: weekParam } = await searchParams;
+  const sp = await searchParams;
+  const weekParam = sp.week;
   if (!/^\d+$/.test(rawId) || !isId(Number(rawId))) notFound();
   const userId = Number(rawId);
   const db = await getDb();
@@ -35,7 +40,18 @@ export default async function AdminEditPicksPage({
 
   // While the week is open another player's picks stay hidden from the admin: blank form, replace-only.
   const hidden = state === 'open' && user.id !== me.id;
-  const entry = hidden ? null : await getEntry(userId, week.id);
+  const mine = await getEntries(userId, week.id);
+  // Admins may add an entry for a player at any time (e.g. picks texted in after the lock).
+  const { isNew, entry, index, copyFrom: copySrc, canAdd } = selectEntry(mine, sp.entry, sp.copy);
+  const copyFrom = hidden ? null : copySrc;
+  const shown = hidden ? null : isNew ? copyFrom : entry;
+  const base = `/admin/picks/${userId}?week=${week.id}`;
+  const entryName = (i: number) => `Entry ${i + 1}`;
+  const tabs = [
+    ...mine.map((e, i) => ({ key: String(i + 1), label: entryName(i), href: `${base}&entry=${e.entryId}`, current: e === entry })),
+    ...(isNew ? [{ key: 'new', label: 'New entry', href: `${base}&entry=new`, current: true }] : []),
+  ];
+  const which = isNew ? 'New entry' : mine.length > 1 ? entryName(index) : null;
   const tb = await resolveTiebreakerGame(week, games, now);
   const tbLabel = tb
     ? `Total points in ${tb.awayTeam} @ ${tb.homeTeam} (${formatPT(tb.kickoffAt, 'EEE h:mm a')})`
@@ -56,7 +72,13 @@ export default async function AdminEditPicksPage({
         <h1 className="mt-1 text-2xl font-bold">
           Edit picks: {user.firstName} <span className="text-base font-normal text-muted">@{user.username}</span>
         </h1>
-        {hidden ? (
+        {isNew ? (
+          <p data-testid="new-entry-notice" className="text-sm text-muted">
+            Week {week.weekNumber}. New entry for {user.firstName}
+            {copyFrom ? `, starting from ${entryName(mine.indexOf(copyFrom))}'s picks` : ''}. It starts unpaid.{' '}
+            <Link href={base} className="font-semibold text-accent-bright">Cancel</Link>
+          </p>
+        ) : hidden ? (
           <p data-testid="picks-hidden-notice" className="text-sm text-muted">
             Week {week.weekNumber}. Picks are hidden until the lock. Saving replaces this player&apos;s picks.
           </p>
@@ -66,18 +88,41 @@ export default async function AdminEditPicksPage({
           </p>
         )}
       </div>
+      <EntryTabs tabs={tabs} />
       <PicksForm
-        key={`${week.id}-${userId}`}
+        key={`${week.id}-${userId}-${isNew ? `new-${copyFrom?.entryId ?? ''}` : Math.max(index, 0)}`}
         weekId={week.id}
         days={days}
-        initialPicks={entry?.picks ?? {}}
-        initialTiebreaker={entry?.tiebreaker ?? null}
+        initialPicks={shown?.picks ?? {}}
+        initialTiebreaker={shown?.tiebreaker ?? null}
         tiebreakerLabel={tbLabel}
         lockShort=""
         hasEntry={!!entry}
-        savedMessage={`Picks saved for ${user.firstName}.`}
-        submitAction={adminSubmitPicksAction.bind(null, userId, week.id)}
+        savedMessage={`${which ? `${which} saved` : 'Picks saved'} for ${user.firstName}.`}
+        initialSaved={!isNew && sp.saved === '1'}
+        savedHrefBase={isNew ? `${base}&saved=1&entry=` : undefined}
+        submitAction={adminSubmitPicksAction.bind(
+          null,
+          userId,
+          week.id,
+          isNew ? { newEntry: true } : entry ? { entryId: entry.entryId } : undefined,
+        )}
       />
+      {entry && (
+        <RemoveEntryButton
+          action={adminDeleteEntryAction.bind(null, entry.entryId)}
+          label={mine.length > 1 ? entryName(index) : 'this entry'}
+          afterHref={base}
+        />
+      )}
+      {canAdd && !isNew && (
+        <AddEntryCard
+          newHref={`${base}&entry=new`}
+          copyHref={hidden ? null : `${base}&entry=new&copy=${entry!.entryId}`}
+          copyLabel={mine.length > 1 ? `Copy ${entryName(index)}` : 'Copy their picks'}
+          note={`Each entry is a separate entry fee, tracked on the Payments tab.`}
+        />
+      )}
     </div>
   );
 }

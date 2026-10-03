@@ -8,7 +8,7 @@ export async function loadWeekSummary<G extends ScoringGame>(week: WeekRow, game
   const tb = await resolveTiebreakerGame(week, games, now);
   return weekSummary(
     games,
-    entries.map((e) => ({ userId: e.userId, name: e.firstName, paid: e.paid, tiebreaker: e.tiebreaker, picks: e.picks })),
+    entries.map((e) => ({ entryId: e.entryId, userId: e.userId, name: e.label, paid: e.paid, tiebreaker: e.tiebreaker, picks: e.picks })),
     { tiebreakerGameId: tb?.id ?? null },
   );
 }

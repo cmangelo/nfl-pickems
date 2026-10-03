@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { entries, weeks } from '@/db/schema';
-import { getEntry, listEntries, submitPicks } from './picks';
+import { MAX_ENTRIES_PER_WEEK, deleteEntry, getEntries, getEntry, listEntries, submitPicks } from './picks';
 import { freshDb, makeUser, makeWeek } from './testing/helpers';
 import { resolveTiebreakerGame } from './weeks';
 
@@ -190,6 +190,117 @@ describe('submitPicks: atomic write and admin audit (M4, M6)', () => {
     expect(await getEntry(boss, weekId)).toMatchObject({ picks: both('away'), tiebreaker: 2, editedByAdminId: boss, adminEditedAt: LOCKED });
     // Editing someone else after the lock is fine.
     expect((await submitPicks(ann, weekId, { picks: both('away'), tiebreaker: 1 }, { now: LOCKED, asAdmin: true, actorId: boss })).ok).toBe(true);
+  });
+});
+
+describe('multiple entries per week', () => {
+  let weekId: number;
+  let gameIds: number[];
+  let ann: number;
+  let bob: number;
+  beforeEach(async () => {
+    await freshDb();
+    const w = await makeWeek(W, [{}, {}]);
+    weekId = w.week.id;
+    gameIds = w.games.map((g) => g.id);
+    ann = (await makeUser('Ann')).id;
+    bob = (await makeUser('Bob')).id;
+  });
+  const both = (side: 'home' | 'away') => Object.fromEntries(gameIds.map((id) => [id, side]));
+  const save = (userId: number, side: 'home' | 'away', tb: number, opts: { entryId?: number; newEntry?: boolean; now?: Date; asAdmin?: boolean } = {}) =>
+    submitPicks(userId, weekId, { picks: both(side), tiebreaker: tb }, { now: OPEN, ...opts });
+  const idOf = (r: Awaited<ReturnType<typeof submitPicks>>) => (r.ok ? r.entryId : NaN);
+
+  it('newEntry adds a separate, unpaid entry; each is edited by id', async () => {
+    const first = idOf(await save(ann, 'home', 10));
+    const second = idOf(await save(ann, 'away', 20, { newEntry: true }));
+    expect(second).not.toBe(first);
+    let list = await getEntries(ann, weekId);
+    expect(list.map((e) => [e.entryNo, e.tiebreaker, e.paid])).toEqual([[1, 10, false], [2, 20, false]]);
+    expect(list[1].picks).toEqual(both('away'));
+
+    expect((await save(ann, 'away', 11, { entryId: first })).ok).toBe(true);
+    list = await getEntries(ann, weekId);
+    expect(list.map((e) => [e.entryId, e.tiebreaker])).toEqual([[first, 11], [second, 20]]);
+    expect(list[0].picks).toEqual(both('away'));
+    // No target = the first entry.
+    expect(idOf(await save(ann, 'home', 12))).toBe(first);
+    expect((await getEntry(ann, weekId))?.tiebreaker).toBe(12);
+  });
+
+  it('newEntry with no entries yet creates entry 1', async () => {
+    await save(ann, 'home', 10, { newEntry: true });
+    expect((await getEntries(ann, weekId)).map((e) => e.entryNo)).toEqual([1]);
+  });
+
+  it(`caps a player at ${MAX_ENTRIES_PER_WEEK} entries`, async () => {
+    for (let i = 0; i < MAX_ENTRIES_PER_WEEK; i++) expect((await save(ann, 'home', i, { newEntry: true })).ok).toBe(true);
+    expect(await save(ann, 'home', 99, { newEntry: true })).toMatchObject({ ok: false, error: 'entry_limit' });
+    expect(await getEntries(ann, weekId)).toHaveLength(MAX_ENTRIES_PER_WEEK);
+    // Freeing a slot reuses it.
+    const third = (await getEntries(ann, weekId))[2];
+    expect(await deleteEntry(third.entryId, { now: OPEN, userId: ann })).toEqual({ ok: true });
+    expect((await save(ann, 'home', 7, { newEntry: true })).ok).toBe(true);
+    expect((await getEntries(ann, weekId)).find((e) => e.entryNo === 3)?.tiebreaker).toBe(7);
+  });
+
+  it('concurrent newEntry saves never share a slot', async () => {
+    await save(ann, 'home', 1);
+    const rs = await Promise.all([save(ann, 'home', 2, { newEntry: true }), save(ann, 'away', 3, { newEntry: true })]);
+    expect(rs.every((r) => r.ok)).toBe(true);
+    expect((await getEntries(ann, weekId)).map((e) => e.entryNo)).toEqual([1, 2, 3]);
+  });
+
+  it("rejects someone else's entry id, or one from another week", async () => {
+    const bobs = idOf(await save(bob, 'home', 10));
+    expect(await save(ann, 'away', 5, { entryId: bobs })).toMatchObject({ ok: false, error: 'entry_not_found' });
+    expect((await getEntry(bob, weekId))?.picks).toEqual(both('home'));
+    const other = await makeWeek({ ...W, weekNumber: 6 }, [{}]);
+    const r = await submitPicks(bob, other.week.id, { picks: { [other.games[0].id]: 'home' }, tiebreaker: 1 }, { now: OPEN, entryId: bobs });
+    expect(r).toMatchObject({ ok: false, error: 'entry_not_found' });
+  });
+
+  it('checks started games against the targeted entry; no new entries after a kickoff', async () => {
+    const db = await getDb();
+    const { games } = await import('@/db/schema');
+    const first = idOf(await save(ann, 'home', 10));
+    const second = idOf(await save(ann, 'away', 20, { newEntry: true }));
+    await db.update(games).set({ kickoffAt: d('2026-10-07T18:00:00Z') }).where(eq(games.id, gameIds[0]));
+    const after = d('2026-10-07T19:00:00Z');
+    // Entry 2 keeps its own started pick (away) while changing the rest.
+    const mixed = { [gameIds[0]]: 'away' as const, [gameIds[1]]: 'home' as const };
+    expect((await submitPicks(ann, weekId, { picks: mixed, tiebreaker: 21 }, { now: after, entryId: second })).ok).toBe(true);
+    // ...but entry 1 can't take that pick.
+    expect(await submitPicks(ann, weekId, { picks: mixed, tiebreaker: 11 }, { now: after, entryId: first })).toMatchObject({ error: 'game_started' });
+    expect(await save(ann, 'home', 30, { newEntry: true, now: after })).toMatchObject({ error: 'game_started' });
+    expect((await save(ann, 'home', 30, { newEntry: true, now: after, asAdmin: true })).ok).toBe(true);
+  });
+
+  it('listEntries labels players with several entries', async () => {
+    await save(bob, 'home', 1);
+    await save(ann, 'home', 2);
+    await save(ann, 'away', 3, { newEntry: true });
+    const list = await listEntries(weekId);
+    expect(list.map((e) => [e.label, e.entryIndex, e.entryCount, e.tiebreaker])).toEqual([
+      ['Ann (1)', 0, 2, 2],
+      ['Ann (2)', 1, 2, 3],
+      ['Bob', 0, 1, 1],
+    ]);
+  });
+
+  it('deleteEntry: players keep at least one entry and only while open; admins may delete any', async () => {
+    const first = idOf(await save(ann, 'home', 10));
+    expect(await deleteEntry(first, { now: OPEN, userId: ann })).toMatchObject({ ok: false });
+    const second = idOf(await save(ann, 'away', 20, { newEntry: true }));
+    expect(await deleteEntry(second, { now: OPEN, userId: bob })).toMatchObject({ ok: false, error: 'Entry not found.' });
+    expect(await deleteEntry(second, { now: LOCKED, userId: ann })).toMatchObject({ ok: false });
+    // Deleting entry 1 leaves entry 2, which is now the player's (only) entry.
+    expect(await deleteEntry(first, { now: OPEN, userId: ann })).toEqual({ ok: true });
+    expect((await getEntries(ann, weekId)).map((e) => [e.entryId, e.entryNo])).toEqual([[second, 2]]);
+    expect((await listEntries(weekId))[0].label).toBe('Ann');
+    expect(await deleteEntry(second, { now: LOCKED, asAdmin: true })).toEqual({ ok: true });
+    expect(await getEntries(ann, weekId)).toEqual([]);
+    expect(await deleteEntry(second, { now: OPEN, asAdmin: true })).toMatchObject({ ok: false });
   });
 });
 
