@@ -56,7 +56,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 - The full ranked list of everyone counted: correct picks, tiebreaker guess, and the gap between their guess and the actual total.
 - Stats: most correct, fewest correct, group average.
 - **Per-game pick split** (for example, "7 picked KC, 3 picked BUF"), with the winning team highlighted.
-- **Upset of the week:** the game the most people got wrong.
+- **Upset of the week:** the game the most entries got wrong (the copy counts entries, e.g. "2 entries got it wrong").
 - Entries that are not counted because they are unpaid are listed separately as "not counted".
 - During the week (after the lock), the recap shows picks and splits plus results for the games finished so far, marked "in progress" until every game is final.
 

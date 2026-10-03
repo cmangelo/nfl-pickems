@@ -282,6 +282,9 @@ test('@smoke locked week: each entry is ranked, shown, split and listed on its o
   for (const id of gameIds.slice(2)) await setResult(request, id, 'home');
   await page.goto(`/leaderboard?week=${weekId}`);
   await expect(page.locator('[data-testid^="rank-row-"]').getByTestId('player-name')).toHaveText(['Ann (1)', 'Ann (2)', 'Bob']);
+  // Upset of the week counts entries: game 2 was missed by Ann (2) and Bob.
+  await expect(page.getByTestId('upset-wrong')).toHaveText('2 entries got it wrong');
+  await expect(page.getByTestId('upset-right')).toHaveText('Only 1 entry picked it (Ann (1))');
   await page.goto('/weeks');
   await expect(page.getByTestId('week-row-7')).toContainText('You won');
   await expect(page.getByTestId('week-row-7')).toContainText('Winner: Ann (1)');

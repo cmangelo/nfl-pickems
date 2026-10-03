@@ -2,7 +2,8 @@ import type { Upset } from './scoring';
 
 /** Pure view helpers for the Leaderboard / Games views (no DB, no clock reads). Never "X of N players". */
 
-export const playersLabel = (n: number) => `${n} player${n === 1 ? '' : 's'}`;
+/** Upset counts are per entry (a player may have several entries in a week). */
+export const entriesLabel = (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'}`;
 
 /** "A", "A and B", "A, B and C". */
 export function joinNames(names: string[]): string {
@@ -46,16 +47,16 @@ export function upsetHeadline(g: UpsetGameLike): string | null {
   return `${win} over ${lose}${score}`;
 }
 
-/** "8 players got it wrong". */
+/** "8 entries got it wrong". */
 export function upsetWrongText(u: Pick<Upset, 'wrongCount'>): string {
-  return `${playersLabel(u.wrongCount)} got it wrong`;
+  return `${entriesLabel(u.wrongCount)} got it wrong`;
 }
 
-/** "Only 1 player picked it (Sarah)" / "Nobody picked it" / null when there are too many to name. */
+/** "Only 1 entry picked it (Sarah)" / "Nobody picked it" / null when there are too many to name. */
 export function upsetRightText(u: Pick<Upset, 'correctCount' | 'correctNames'>): string | null {
   if (u.correctCount === 0) return 'Nobody picked it';
   if (!u.correctNames) return null;
-  return `Only ${playersLabel(u.correctCount)} picked it (${joinNames(u.correctNames)})`;
+  return `Only ${entriesLabel(u.correctCount)} picked it (${joinNames(u.correctNames)})`;
 }
 
 export interface WinnerBanner {
