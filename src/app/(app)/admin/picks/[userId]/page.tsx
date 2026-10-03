@@ -90,7 +90,7 @@ export default async function AdminEditPicksPage({
       </div>
       <EntryTabs tabs={tabs} />
       <PicksForm
-        key={`${week.id}-${userId}-${isNew ? `new-${copyFrom?.entryId ?? ''}` : Math.max(index, 0)}`}
+        key={`${week.id}-${userId}-${isNew ? `new-${copyFrom?.entryId ?? ''}` : (entry?.entryId ?? 'none')}`}
         weekId={week.id}
         days={days}
         initialPicks={shown?.picks ?? {}}
@@ -100,7 +100,7 @@ export default async function AdminEditPicksPage({
         hasEntry={!!entry}
         savedMessage={`${which ? `${which} saved` : 'Picks saved'} for ${user.firstName}.`}
         initialSaved={!isNew && sp.saved === '1'}
-        savedHrefBase={isNew ? `${base}&saved=1&entry=` : undefined}
+        savedHrefBase={isNew || !entry ? `${base}&saved=1&entry=` : undefined}
         submitAction={adminSubmitPicksAction.bind(
           null,
           userId,
@@ -110,9 +110,11 @@ export default async function AdminEditPicksPage({
       />
       {entry && (
         <RemoveEntryButton
+          key={entry.entryId}
           action={adminDeleteEntryAction.bind(null, entry.entryId)}
           label={mine.length > 1 ? entryName(index) : 'this entry'}
           afterHref={base}
+          warning={entry.paid ? 'This entry is marked paid; removing it also removes its payment record.' : undefined}
         />
       )}
       {canAdd && !isNew && (

@@ -280,3 +280,13 @@ describe('several entries from one player', () => {
     expect(r.map((e) => [e.entryId, e.rank, e.tied])).toEqual([[11, 1, true], [12, 1, true]]);
   });
 });
+
+describe('entry labels sort numerically within a tie', () => {
+  it('"Ann (2)" before "Ann (10)"', () => {
+    const gs = [fin(1, THU, 20, 10)];
+    const es = [entry(1, 'Ann (10)', { 1: 'home' }, 40, true, 20), entry(1, 'Ann (2)', { 1: 'home' }, 40, true, 12)];
+    expect(rankEntries(gs, es).map((e) => e.name)).toEqual(['Ann (2)', 'Ann (10)']);
+    const unpaid = es.map((e) => ({ ...e, paid: false }));
+    expect(weekSummary(gs, unpaid).notCounted.map((e) => e.name)).toEqual(['Ann (2)', 'Ann (10)']);
+  });
+});

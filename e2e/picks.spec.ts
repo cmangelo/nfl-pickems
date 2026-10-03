@@ -38,8 +38,10 @@ test('@smoke open week: pick every game, submit, reload prefilled, edit and resu
   await expect(submit).toHaveText('Submit picks');
   await submit.click();
   await expect(page.getByRole('status')).toHaveText('Picks saved. You can change them until Thu 12:00 PM PT.');
+  await expect(page).not.toHaveURL(/saved=1/);
 
   await page.reload();
+  await expect(page.getByRole('status')).toHaveCount(0);
   for (const id of gameIds) await expect(page.getByTestId(`pick-${id}-home`)).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel(/Total points in/)).toHaveValue('45');
   await expect(page.getByTestId('progress')).toHaveText('4/4 picked');

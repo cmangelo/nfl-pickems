@@ -41,6 +41,7 @@ test('@smoke player adds a second entry from a copy, switches between entries, t
   await expect(page).not.toHaveURL(/entry=new/);
   await expect(page.getByRole('status')).toHaveText('Entry 2 saved. You can change it until Thu 12:00 PM PT.');
   await expect(page.getByTestId('entry-tab-2')).toHaveAttribute('aria-current', 'page');
+  await expect(page).not.toHaveURL(/saved=1/); // a reload won't repeat the notice
   await expect(page.getByTestId(`pick-${gameIds[0]}-away`)).toHaveAttribute('aria-pressed', 'true');
 
   // Entry 1 is untouched.
@@ -81,6 +82,63 @@ test('@smoke player adds a second entry from a copy, switches between entries, t
 
   const hasHScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(hasHScroll).toBe(false);
+});
+
+test('removing Entry 1 shows the next entry\'s own picks and never touches another entry', async ({ page, context, request }) => {
+  const { weekId, gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  await createUser(request, 'Ann', 'ann');
+  await submitPicksFor(request, 'ann', weekId, [H, H], 40);
+  await submitPicksFor(request, 'ann', weekId, [A, A], 30, 'new');
+  await submitPicksFor(request, 'ann', weekId, [H, A], 20, 'new');
+  await setNow(context, WED);
+  await loginAs(page, 'ann');
+
+  await page.goto(`/picks?week=${weekId}`);
+  await expect(page.getByTestId('entry-tab-1')).toHaveAttribute('aria-current', 'page');
+  await page.getByTestId('remove-entry').click();
+  await expect(page.getByTestId('remove-entry-confirm')).toHaveText('Yes, remove Entry 1');
+  await page.getByTestId('remove-entry-confirm').click();
+
+  // The old Entry 2 (A, A / 30) is now Entry 1, with its own picks, and the confirm is not still armed.
+  await expect(page.getByTestId('entry-tab-3')).toHaveCount(0);
+  await expect(page.getByTestId(`pick-${gameIds[0]}-away`)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel(/Total points in/)).toHaveValue('30');
+  await expect(page.getByTestId('remove-entry-confirm')).toHaveCount(0);
+  await expect(page.getByTestId('remove-entry')).toHaveText('Remove Entry 1');
+
+  // Saving it changes only that entry.
+  await page.getByRole('button', { name: 'Update picks' }).click();
+  await expect(page.getByRole('status')).toContainText('Entry 1 saved.');
+  await page.getByTestId('entry-tab-2').click();
+  await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId(`pick-${gameIds[1]}-away`)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel(/Total points in/)).toHaveValue('20');
+  await page.getByTestId('entry-tab-1').click();
+  await expect(page.getByLabel(/Total points in/)).toHaveValue('30');
+});
+
+test('a paid entry cannot be removed by the player; the admin is warned before removing it', async ({ page, context, request }) => {
+  const { weekId } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  await createUser(request, 'Ann', 'ann');
+  await submitPicksFor(request, 'ann', weekId, [H, H], 40);
+  await submitPicksFor(request, 'ann', weekId, [A, A], 30, 'new');
+  await setPaid(request, 'ann', weekId, true, 1);
+  await setNow(context, WED);
+  await loginAs(page, 'ann');
+  await page.goto(`/picks?week=${weekId}`);
+  await expect(page.getByTestId('remove-entry')).toHaveCount(0);
+  await expect(page.getByTestId('paid-entry-note')).toHaveText('Entry 1 is marked paid. Ask an admin if you need it removed.');
+  await page.getByTestId('entry-tab-2').click();
+  await expect(page.getByTestId('remove-entry')).toBeVisible(); // unpaid: removable
+
+  await loginAs(page, 'admin');
+  await page.goto(`/admin/payments?week=${weekId}`);
+  await page.getByRole('link', { name: 'Edit picks for Ann (1)' }).click();
+  await page.getByTestId('remove-entry').click();
+  await expect(page.getByTestId('remove-entry-warning')).toContainText('marked paid');
+  await page.getByTestId('entry-tab-2').click();
+  await page.getByTestId('remove-entry').click();
+  await expect(page.getByTestId('remove-entry-warning')).toHaveCount(0);
 });
 
 test('open week: "N in" counts entries and marks a player with several', async ({ page, context, request }) => {

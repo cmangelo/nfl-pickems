@@ -110,7 +110,7 @@ export function rankEntries(games: ScoringGame[], entries: ScoringEntry[], tiebr
     (a, b) =>
       b.correct - a.correct ||
       (a.tiebreakerDiff ?? 0) - (b.tiebreakerDiff ?? 0) ||
-      a.name.localeCompare(b.name) ||
+      a.name.localeCompare(b.name, undefined, { numeric: true }) ||
       a.userId - b.userId ||
       a.entryId - b.entryId,
   );
@@ -176,7 +176,7 @@ export function weekSummary(
   const notCounted = entries
     .filter((e) => !e.paid)
     .map((e) => scoreEntry(games, e, tiebreakerGameId))
-    .sort((a, b) => a.name.localeCompare(b.name) || a.entryId - b.entryId);
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }) || a.entryId - b.entryId);
   const playable = games.filter((g) => !isVoid(g));
   const gamesFinal = playable.filter((g) => g.status === 'final').length;
   const isFinal = games.length > 0 && gamesFinal === playable.length;

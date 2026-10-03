@@ -8,11 +8,14 @@ export default function RemoveEntryButton({
   action,
   label,
   afterHref,
+  warning,
 }: {
   action: () => Promise<{ ok: true } | { ok: false; error: string }>;
   /** "Entry 2" */
   label: string;
   afterHref: string;
+  /** Shown with the confirm buttons, e.g. that the entry is marked paid. */
+  warning?: string;
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -40,6 +43,11 @@ export default function RemoveEntryButton({
       {error && (
         <p role="alert" className="w-full rounded-lg bg-wrong/15 px-3 py-2 text-sm text-[#ff9c9c]">
           {error}
+        </p>
+      )}
+      {confirming && warning && (
+        <p data-testid="remove-entry-warning" className="w-full text-center text-sm font-semibold text-[#ff9c9c]">
+          {warning}
         </p>
       )}
       {confirming ? (

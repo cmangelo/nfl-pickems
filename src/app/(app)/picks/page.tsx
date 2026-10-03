@@ -74,8 +74,8 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
           </p>
         )}
         <PicksForm
-          // Keyed by position so the first save (no entry -> entry 1) keeps the form and its "saved" notice.
-          key={`${week.id}-${isNew ? `new-${copyFrom?.entryId ?? ''}` : Math.max(index, 0)}`}
+          // Keyed by entry so switching or removing an entry never keeps another entry's unsaved state.
+          key={`${week.id}-${isNew ? `new-${copyFrom?.entryId ?? ''}` : (entry?.entryId ?? 'none')}`}
           weekId={week.id}
           days={days}
           initialPicks={(isNew ? copyFrom : entry)?.picks ?? {}}
@@ -84,7 +84,8 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
           lockShort={formatPT(lock, "EEE h:mm a 'PT'")}
           hasEntry={!!entry}
           target={isNew ? { newEntry: true } : entry ? { entryId: entry.entryId } : undefined}
-          savedHrefBase={isNew ? `${base}&saved=1&entry=` : undefined}
+          // Creating an entry (the first one or another) navigates to it, remounting the form on it.
+          savedHrefBase={isNew || !entry ? `${base}&saved=1&entry=` : undefined}
           initialSaved={!isNew && sp.saved === '1'}
           savedMessage={
             isNew || mine.length > 1
@@ -92,8 +93,18 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
               : undefined
           }
         />
-        {entry && mine.length > 1 && (
-          <RemoveEntryButton action={deleteEntryAction.bind(null, entry.entryId)} label={entryName(index)} afterHref={base} />
+        {entry && mine.length > 1 && !entry.paid && (
+          <RemoveEntryButton
+            key={entry.entryId}
+            action={deleteEntryAction.bind(null, entry.entryId)}
+            label={entryName(index)}
+            afterHref={base}
+          />
+        )}
+        {entry && mine.length > 1 && entry.paid && (
+          <p data-testid="paid-entry-note" className="mt-4 text-center text-sm text-muted">
+            {entryName(index)} is marked paid. Ask an admin if you need it removed.
+          </p>
         )}
         {canAdd && !isNew && entry && (
           <AddEntryCard

@@ -198,11 +198,14 @@ export async function submitPicks(
 const entryLimit = () =>
   fail('entry_limit', `You can have at most ${MAX_ENTRIES_PER_WEEK} entries in a week.`);
 
+export const PAID_ENTRY_ERROR = 'This entry is marked paid. Ask an admin to remove it.';
+
 export type DeleteEntryResult = { ok: true } | { ok: false; error: string };
 
 /**
- * Deletes one entry (its picks cascade). A player may delete their own entry only while the week is open
- * and only if they keep at least one; an admin (asAdmin) may delete any entry at any time.
+ * Deletes one entry (its picks cascade). A player may delete their own entry only while the week is open,
+ * only if it isn't marked paid (the payment record would vanish with it) and only if they keep at least one;
+ * an admin (asAdmin) may delete any entry at any time.
  */
 export async function deleteEntry(
   entryId: number,
@@ -218,12 +221,15 @@ export async function deleteEntry(
   const [week] = await db.select().from(weeks).where(eq(weeks.id, entry.weekId));
   const weekGames = await db.select({ status: games.status }).from(games).where(eq(games.weekId, entry.weekId));
   if (!week || weekState(week, weekGames, now) !== 'open') return { ok: false, error: 'Picks are closed for this week.' };
-  // One statement: refuses to remove the player's last entry even if two deletes race.
+  if (entry.paid) return { ok: false, error: PAID_ENTRY_ERROR };
+  // Re-checks paid and "keeps another entry" in the DELETE itself (not fully race-proof against two
+  // simultaneous deletes of different entries; the player can simply resubmit while the week is open).
   const rows = await db
     .delete(entries)
     .where(
       and(
         eq(entries.id, entryId),
+        eq(entries.paid, false),
         sql`(SELECT count(*) FROM entries e2 WHERE e2.week_id = ${entry.weekId} AND e2.user_id = ${entry.userId}) > 1`,
       ),
     )

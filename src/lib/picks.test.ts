@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { entries, weeks } from '@/db/schema';
-import { MAX_ENTRIES_PER_WEEK, deleteEntry, getEntries, getEntry, listEntries, submitPicks } from './picks';
+import { MAX_ENTRIES_PER_WEEK, PAID_ENTRY_ERROR, deleteEntry, getEntries, getEntry, listEntries, submitPicks } from './picks';
 import { freshDb, makeUser, makeWeek } from './testing/helpers';
 import { resolveTiebreakerGame } from './weeks';
 
@@ -301,6 +301,17 @@ describe('multiple entries per week', () => {
     expect(await deleteEntry(second, { now: LOCKED, asAdmin: true })).toEqual({ ok: true });
     expect(await getEntries(ann, weekId)).toEqual([]);
     expect(await deleteEntry(second, { now: OPEN, asAdmin: true })).toMatchObject({ ok: false });
+  });
+
+  it('deleteEntry: a player cannot delete a paid entry; an admin can', async () => {
+    const { setPaid } = await import('./admin');
+    const first = idOf(await save(ann, 'home', 10));
+    const second = idOf(await save(ann, 'away', 20, { newEntry: true }));
+    await setPaid(first, true);
+    expect(await deleteEntry(first, { now: OPEN, userId: ann })).toEqual({ ok: false, error: PAID_ENTRY_ERROR });
+    expect((await getEntries(ann, weekId)).map((e) => e.entryId)).toEqual([first, second]);
+    expect(await deleteEntry(second, { now: OPEN, userId: ann })).toEqual({ ok: true }); // unpaid one is fine
+    expect(await deleteEntry(first, { now: OPEN, asAdmin: true })).toEqual({ ok: true });
   });
 });
 
