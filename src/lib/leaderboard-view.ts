@@ -1,4 +1,5 @@
 import type { ScoringGame, Side, Upset } from './scoring';
+import { ptDayOfWeek } from './time';
 
 /** Pure view helpers for the Leaderboard / Games views (no DB, no clock reads). Never "X of N players". */
 
@@ -21,6 +22,11 @@ export function formatUpdatedAgo(last: Date | null, at: Date): string {
   if (hr < 24) return `Updated ${hr} hr ago`;
   const d = Math.floor(hr / 24);
   return `Updated ${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+/** Short label for the tiebreaker guess: "MNF" when the tiebreaker game is on Monday (PT), else "TB". */
+export function tiebreakerShortLabel(game: Pick<ScoringGame, 'kickoffAt'> | null | undefined): 'MNF' | 'TB' {
+  return game && ptDayOfWeek(game.kickoffAt) === 1 ? 'MNF' : 'TB';
 }
 
 /** "(±3)" once the tiebreaker game is final, else "". */

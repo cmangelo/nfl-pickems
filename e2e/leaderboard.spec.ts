@@ -286,3 +286,18 @@ test('@smoke weekly report: winner, podium, games of the week and awards', async
   await expect(page.getByTestId('stat-fewest')).toContainText('Toilet bowl');
   await expectNoPlayerCountOf(page);
 });
+
+test('tiebreaker label is TB when the week has no Monday game', async ({ page, context, request }) => {
+  // One seeded game kicks off Thursday night: it is the tiebreaker game, and not on Monday.
+  const { weekId } = await seedWeek(request, { weekNumber: 7, numGames: 1, tuesday: WED });
+  await createUser(request, 'Ann', 'annie');
+  await submitPicksFor(request, 'annie', weekId, ['home'], 40);
+  await setPaid(request, 'annie', weekId, true);
+  await setNow(context, FRI);
+  await loginAs(page, 'annie');
+  await page.goto('/leaderboard');
+  const row = page.locator('[data-testid^="rank-row-"]').first();
+  await expect(row).toContainText('TB 40');
+  await expect(row).not.toContainText('MNF');
+  await expect(row).not.toContainText('to play');
+});

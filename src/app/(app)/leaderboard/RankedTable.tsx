@@ -47,6 +47,7 @@ export function RankedTable({
   showDiff,
   live = false,
   eliminated = [],
+  tbLabel = 'TB',
 }: {
   ranked: RankedEntry[];
   games: ScoringGame[];
@@ -58,6 +59,8 @@ export function RankedTable({
   live?: boolean;
   /** Entries that can no longer finish 1st (live board only): tagged "OUT". */
   eliminated?: number[];
+  /** Label before each tiebreaker guess: "MNF" for a Monday tiebreaker game, else "TB". */
+  tbLabel?: string;
 }) {
   const out = new Set(eliminated);
   if (ranked.length === 0) {
@@ -104,7 +107,7 @@ export function RankedTable({
                       )}
                     </span>
                     <span className="text-xs text-muted">
-                      MNF{' '}
+                      {tbLabel}{' '}
                       <span data-testid="tb-guess">
                         {e.tiebreaker}
                         {showDiff && e.tiebreakerDiff !== null && <> {tiebreakerDiffLabel(e.tiebreakerDiff)}</>}

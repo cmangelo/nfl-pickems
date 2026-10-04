@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  tiebreakerShortLabel,
   avatarColors,
   initial,
   pickResults,
@@ -114,5 +115,14 @@ describe('avatars', () => {
     expect(avatarColors(3)).not.toEqual(avatarColors(4));
     expect(initial('ann (2)')).toBe('A');
     expect(initial('  ')).toBe('?');
+  });
+});
+
+describe('tiebreakerShortLabel', () => {
+  it('MNF for a Monday (PT) game, TB otherwise', () => {
+    expect(tiebreakerShortLabel({ kickoffAt: new Date('2026-10-13T00:15:00Z') })).toBe('MNF'); // Mon 5:15 PM PDT
+    expect(tiebreakerShortLabel({ kickoffAt: new Date('2026-10-12T00:20:00Z') })).toBe('TB'); // Sun 5:20 PM PDT (Mon in UTC)
+    expect(tiebreakerShortLabel({ kickoffAt: new Date('2027-01-09T21:30:00Z') })).toBe('TB'); // Saturday
+    expect(tiebreakerShortLabel(null)).toBe('TB');
   });
 });

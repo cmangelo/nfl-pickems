@@ -2,7 +2,7 @@ import NoWeeks from '@/components/NoWeeks';
 import PotCard from '@/components/PotCard';
 import RevealedCard from '@/components/RevealedCard';
 import { requireUser } from '@/lib/auth';
-import { formatUpdatedAgo } from '@/lib/leaderboard-view';
+import { formatUpdatedAgo, tiebreakerShortLabel } from '@/lib/leaderboard-view';
 import { listEntries } from '@/lib/picks';
 import { computePot } from '@/lib/pot';
 import { weekReport } from '@/lib/report';
@@ -54,6 +54,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const summary = await loadWeekSummary(week, games, t);
   const tb = await resolveTiebreakerGame(week, games, t);
   const tbName = tb ? `${tb.awayTeam} @ ${tb.homeTeam}` : 'the tiebreaker game';
+  const tbLabel = tiebreakerShortLabel(tb);
   const tbFinal = summary.tiebreakerActualTotal !== null;
   const gamesText = `${summary.gamesFinal} of ${summary.gamesTotal} games final`;
   const pot = computePot(fee?.cents, summary.ranked.length);
@@ -78,6 +79,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           showDiff={tbFinal}
           live
           eliminated={summary.eliminated}
+          tbLabel={tbLabel}
         />
         <p data-testid="tb-footnote" className="text-xs text-muted">
           Players with the same number correct share a rank. The tiebreaker (closest guess to the total points in {tbName})
@@ -103,7 +105,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   return (
     <div className="flex flex-col gap-4">
       <WeeklyReport weekNumber={week.weekNumber} summary={summary} report={report} games={games} pot={pot} gamesText={gamesText} />
-      <RankedTable ranked={summary.ranked} games={games} weekId={week.id} viewerId={user.id} showDiff={tbFinal} />
+      <RankedTable ranked={summary.ranked} games={games} weekId={week.id} viewerId={user.id} showDiff={tbFinal} tbLabel={tbLabel} />
       {tbFinal && (
         <p data-testid="mnf-total" className="text-xs text-muted">
           {tbName} finished with {summary.tiebreakerActualTotal} total points. The number in parentheses is each guess&apos;s distance from it.
