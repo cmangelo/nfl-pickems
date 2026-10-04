@@ -1,7 +1,8 @@
 import NoWeeks from '@/components/NoWeeks';
 import RevealedCard from '@/components/RevealedCard';
 import TeamLogo from '@/components/TeamLogo';
-import { liveLabel } from '@/lib/game-view';
+import { entryCount, liveLabel, splitPercents } from '@/lib/game-view';
+import { barColors } from '@/lib/team-colors';
 import { requireUser } from '@/lib/auth';
 import { getEntries, listEntries } from '@/lib/picks';
 import type { Side } from '@/lib/scoring';
@@ -66,7 +67,6 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
 
       {games.map((g) => {
         const split = summary.splits[g.id] ?? { home: 0, away: 0 };
-        const total = split.home + split.away;
         // How many of the viewer's entries took each side (usually one entry: 0 or 1).
         const myCount = (s: Side) => mine.filter((e) => e.picks[g.id] === s).length;
         const settled = g.status === 'final' && g.winner !== null;
@@ -104,7 +104,10 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
                 )}
                 {won && <span className="sr-only">(winner)</span>}
               </div>
-              <div className="text-sm">{count} picked {team}</div>
+              <div className="text-sm">
+                {entryCount(count)}
+                <span className="sr-only"> picked {team}</span>
+              </div>
               {yours > 0 && (
                 <span
                   data-testid={mine.length > 1 ? `your-pick-${g.id}-${s}` : `your-pick-${g.id}`}
@@ -117,7 +120,34 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
           );
         };
         const isVoid = g.status === 'void';
-        const awayPct = total === 0 ? 0 : (split.away / total) * 100;
+        const pct = splitPercents(split.away, split.home);
+        // Each side in its team's color (kept visible on the card and distinct from the opponent).
+        const colors = barColors(g.awayTeam, g.homeTeam);
+        const segment = (sd: Side) => {
+          const n = split[sd];
+          if (n === 0) return null;
+          const color = isVoid ? 'var(--muted)' : colors[sd];
+          return (
+            <div
+              data-testid={`split-seg-${g.id}-${sd}`}
+              data-color={isVoid ? 'void' : colors[sd]}
+              className={`basis-0 ${isVoid ? 'opacity-40' : ''}`}
+              style={{ flexGrow: n, background: color }}
+            />
+          );
+        };
+        const pctLabel = (sd: Side, team: string) => (
+          <span data-testid={`split-pct-${g.id}-${sd}`} className={`flex items-center gap-1.5 ${sd === 'home' ? 'flex-row-reverse' : ''}`}>
+            <span
+              aria-hidden="true"
+              className={`size-2.5 rounded-sm ${isVoid ? 'opacity-40' : ''}`}
+              style={{ background: isVoid ? 'var(--muted)' : colors[sd] }}
+            />
+            <span>
+              {team} <span className="tabular-nums text-fg">{pct?.[sd]}%</span>
+            </span>
+          </span>
+        );
         return (
           <div
             key={g.id}
@@ -141,14 +171,27 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
               {side('away', g.awayTeam)}
               {side('home', g.homeTeam)}
             </div>
-            <div
-              role="img"
-              aria-label={`${split.away} picked ${g.awayTeam}, ${split.home} picked ${g.homeTeam}`}
-              data-testid={`split-bar-${g.id}`}
-              className="mt-2 flex h-2 overflow-hidden rounded-full bg-surface-2"
-            >
-              <div className={isVoid ? 'bg-muted/40' : 'bg-accent'} style={{ width: `${awayPct}%` }} />
-              <div className={isVoid ? 'bg-muted/20' : 'bg-accent-bright/40'} style={{ width: `${total === 0 ? 0 : 100 - awayPct}%` }} />
+            {/* Share of counted entries per side: a two-segment bar (away | home, team colors) with percentages under each end. */}
+            <div className="mt-3">
+              <div
+                role="img"
+                aria-label={
+                  pct
+                    ? `${entryCount(split.away)} picked ${g.awayTeam} (${pct.away}%), ${entryCount(split.home)} picked ${g.homeTeam} (${pct.home}%)`
+                    : 'No counted entries'
+                }
+                data-testid={`split-bar-${g.id}`}
+                className="flex h-2.5 gap-[2px] overflow-hidden rounded-full bg-surface-2"
+              >
+                {segment('away')}
+                {segment('home')}
+              </div>
+              {pct && (
+                <div aria-hidden="true" className="mt-1.5 flex justify-between text-xs font-semibold text-muted">
+                  {pctLabel('away', g.awayTeam)}
+                  {pctLabel('home', g.homeTeam)}
+                </div>
+              )}
             </div>
           </div>
         );

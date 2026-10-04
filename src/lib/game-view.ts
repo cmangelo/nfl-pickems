@@ -42,3 +42,17 @@ export function logoVariants(onLight: boolean): LogoVariant[] {
 export function teamLogoUrl(abbr: string, variant: LogoVariant = '500-dark', base: string = ESPN_LOGO_BASE): string {
   return `${base}/${variant}/${encodeURIComponent(abbr.toLowerCase())}.png`;
 }
+
+/** "1 entry" / "3 entries": pick splits count entries (a player may have several). */
+export const entryCount = (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'}`;
+
+/**
+ * Whole-number percentages of a two-way pick split that always add up to 100 (the away share is
+ * rounded, home takes the rest). Null when nobody is counted (no split to show).
+ */
+export function splitPercents(away: number, home: number): { away: number; home: number } | null {
+  const total = away + home;
+  if (total <= 0) return null;
+  const a = Math.round((away / total) * 100);
+  return { away: a, home: 100 - a };
+}

@@ -117,15 +117,17 @@ test('games tab: counts only, "Your pick" on my side (even if unpaid), no name l
   await expect(page.getByTestId('games-status')).toHaveText('In progress · 1 of 4 games final');
   // Counted entries on game 0: Ann H, Bob H, Cy A => 1 away, 2 home
   const g0 = gameIds[0];
-  await expect(page.getByTestId(`split-${g0}-home`)).toContainText('2 picked');
-  await expect(page.getByTestId(`split-${g0}-away`)).toContainText('1 picked');
+  await expect(page.getByTestId(`split-${g0}-home`)).toContainText('2 entries');
+  await expect(page.getByTestId(`split-${g0}-away`)).toContainText('1 entry');
   await expect(page.getByTestId(`split-${g0}-home`)).toContainText('Your pick');
   await expect(page.getByTestId(`split-${g0}-away`)).not.toContainText('Your pick');
   await expect(page.getByTestId(`split-${g0}-home`)).toHaveAttribute('data-winner', 'true');
   await expect(page.getByTestId(`game-status-${g0}`)).toHaveText('Final');
   await expect(page.getByTestId(`split-${gameIds[1]}-home`)).toHaveAttribute('data-winner', 'false');
   await expect(page.getByTestId(`game-status-${gameIds[1]}`)).toContainText('PT');
-  await expect(page.getByTestId(`split-bar-${g0}`)).toHaveAttribute('aria-label', /1 picked \w+, 2 picked \w+/);
+  await expect(page.getByTestId(`split-bar-${g0}`)).toHaveAttribute('aria-label', /^1 entry picked \w+ \(33%\), 2 entries picked \w+ \(67%\)$/);
+  await expect(page.getByTestId(`split-pct-${g0}-away`)).toHaveText(/33%$/);
+  await expect(page.getByTestId(`split-pct-${g0}-home`)).toHaveText(/67%$/);
   // No name lists.
   for (const n of ['Ann', 'Bob', 'Cy']) await expect(page.getByText(n, { exact: true })).toHaveCount(0);
   await expectNoPlayerCountOf(page);

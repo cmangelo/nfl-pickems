@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ESPN_LOGO_BASE, liveLabel, logoVariants, periodLabel, teamLogoUrl } from './game-view';
+import { ESPN_LOGO_BASE, entryCount, liveLabel, logoVariants, periodLabel, splitPercents, teamLogoUrl } from './game-view';
 
 const live = (over: Partial<Parameters<typeof liveLabel>[0]> = {}) =>
   liveLabel({ status: 'scheduled', liveStatus: 'STATUS_IN_PROGRESS', livePeriod: 3, liveClock: '4:12', ...over });
@@ -45,5 +45,25 @@ describe('teamLogoUrl', () => {
     expect(teamLogoUrl('WSH')).toBe(`${ESPN_LOGO_BASE}/500-dark/wsh.png`);
     expect(ESPN_LOGO_BASE).toBe('https://a.espncdn.com/i/teamlogos/nfl');
     expect(teamLogoUrl('KC', '500', '/api/test/logo')).toBe('/api/test/logo/500/kc.png');
+  });
+});
+
+describe('splitPercents / entryCount', () => {
+  it('adds up to 100 and handles one-sided and empty splits', () => {
+    expect(splitPercents(1, 2)).toEqual({ away: 33, home: 67 });
+    expect(splitPercents(2, 1)).toEqual({ away: 67, home: 33 });
+    expect(splitPercents(1, 1)).toEqual({ away: 50, home: 50 });
+    expect(splitPercents(0, 5)).toEqual({ away: 0, home: 100 });
+    expect(splitPercents(3, 0)).toEqual({ away: 100, home: 0 });
+    expect(splitPercents(0, 0)).toBeNull();
+    for (let a = 0; a <= 7; a++) for (let h = 0; h <= 7; h++) {
+      const p = splitPercents(a, h);
+      if (p) expect(p.away + p.home).toBe(100);
+    }
+  });
+  it('pluralizes entries', () => {
+    expect(entryCount(1)).toBe('1 entry');
+    expect(entryCount(0)).toBe('0 entries');
+    expect(entryCount(3)).toBe('3 entries');
   });
 });
