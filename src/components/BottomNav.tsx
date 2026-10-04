@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link, { useLinkStatus } from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ListChecks, ShieldCheck, Trophy, Tv, type LucideIcon } from 'lucide-react';
 
@@ -37,12 +37,25 @@ export default function BottomNav({ isAdmin }: { isAdmin: boolean }) {
                 on ? 'text-accent-bright' : 'text-muted hover:text-fg'
               }`}
             >
-              <Icon size={22} strokeWidth={on ? 2.4 : 2} aria-hidden="true" />
-              {label}
+              <TabBody Icon={Icon} label={label} on={on} />
             </Link>
           );
         })}
       </nav>
     </div>
+  );
+}
+
+/** Lights the tapped tab up at once (an optimistic state) while its page loads, so a slow load never looks like a dead tap. */
+function TabBody({ Icon, label, on }: { Icon: LucideIcon; label: string; on: boolean }) {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      data-pending={pending ? 'true' : undefined}
+      className={`flex flex-col items-center gap-0.5 ${pending ? 'text-accent-bright' : ''}`}
+    >
+      <Icon size={22} strokeWidth={on || pending ? 2.4 : 2} aria-hidden="true" className={pending ? 'animate-pulse' : ''} />
+      {label}
+    </span>
   );
 }

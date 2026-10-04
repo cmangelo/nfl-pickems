@@ -1,19 +1,21 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { loadScheduleAction } from '@/app/(app)/admin/actions';
+import { useAction } from '@/components/use-action';
+import { SLOW_ACTION_TIMEOUT_MS, actionErrorMessage } from '@/lib/action-timeout';
 
 export default function LoadScheduleButton() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [pending, start] = useTransition();
+  const { pending, run: start, call } = useAction();
   const run = () =>
     start(async () => {
       setMsg(null);
       try {
-        const res = await loadScheduleAction();
+        const res = await call(loadScheduleAction(), SLOW_ACTION_TIMEOUT_MS);
         setMsg(res.ok ? { ok: true, text: res.message ?? 'Loaded.' } : { ok: false, text: res.error });
-      } catch {
-        setMsg({ ok: false, text: 'Load failed. Please try again.' });
+      } catch (e) {
+        setMsg({ ok: false, text: actionErrorMessage(e, 'Load failed. Please try again.') });
       }
     });
   return (

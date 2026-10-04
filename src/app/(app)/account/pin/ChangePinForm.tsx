@@ -1,7 +1,9 @@
 'use client';
 
-import { useActionState } from 'react';
-import { changePinAction } from './actions';
+import { useState } from 'react';
+import { useAction } from '@/components/use-action';
+import { actionErrorMessage } from '@/lib/action-timeout';
+import { changePinAction, type PinState } from './actions';
 
 const input =
   'h-[52px] w-full rounded-[10px] border-[1.5px] border-border bg-surface px-3.5 text-lg tracking-[0.4em] text-fg outline-none focus:border-accent';
@@ -13,9 +15,26 @@ const FIELDS = [
 ] as const;
 
 export default function ChangePinForm() {
-  const [state, action, pending] = useActionState(changePinAction, {});
+  // Not useActionState / <form action>: those run in a transition, which would hold back every navigation until
+  // the request settles (see use-action.ts).
+  const [state, setState] = useState<PinState>({});
+  const { pending, run, call } = useAction();
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (pending) return;
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    run(async () => {
+      try {
+        setState(await call(changePinAction(state, data)));
+      } catch (err) {
+        setState({ error: actionErrorMessage(err, 'Something went wrong. Please try again.') });
+      }
+      form.reset(); // PINs are never left in the fields, as a form action would do
+    });
+  };
   return (
-    <form action={action} key={state.success ? 'done' : 'form'} className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} key={state.success ? 'done' : 'form'} className="flex flex-col gap-4">
       {FIELDS.map(([name, text, ac]) => (
         <div key={name}>
           <label htmlFor={name} className="mb-1.5 block text-sm font-semibold">

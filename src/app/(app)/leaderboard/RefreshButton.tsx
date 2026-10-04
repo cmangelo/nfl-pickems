@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { RotateCw } from 'lucide-react';
+import { useAction } from '@/components/use-action';
 import { refreshAction, type RefreshState } from './actions';
 
 const MESSAGE: Record<RefreshState, string> = {
@@ -11,7 +12,7 @@ const MESSAGE: Record<RefreshState, string> = {
 };
 
 export default function RefreshButton() {
-  const [pending, start] = useTransition();
+  const { pending, run, call } = useAction();
   const [state, setState] = useState<RefreshState | null>(null);
   return (
     <div className="flex flex-col items-end gap-1">
@@ -19,7 +20,15 @@ export default function RefreshButton() {
         type="button"
         data-testid="refresh"
         disabled={pending}
-        onClick={() => start(async () => setState(await refreshAction()))}
+        onClick={() =>
+          run(async () => {
+            try {
+              setState(await call(refreshAction()));
+            } catch {
+              setState('error');
+            }
+          })
+        }
         className="inline-flex items-center gap-1.5 rounded-lg border border-accent px-3 py-1.5 text-sm font-semibold text-accent-bright disabled:opacity-60"
       >
         <RotateCw size={14} strokeWidth={2.5} aria-hidden="true" className={pending ? 'animate-spin' : ''} />

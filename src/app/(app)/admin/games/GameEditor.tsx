@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
+import { useAction } from '@/components/use-action';
+import { actionErrorMessage } from '@/lib/action-timeout';
 import { clearOverrideAction, overrideGameAction, voidGameAction } from '../actions';
 
 export interface AdminGame {
@@ -33,7 +35,7 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
   const [winner, setWinner] = useState<Winner | null>(g.winner);
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const { pending, run: start, call } = useAction();
 
   const line = g.final
     ? `${g.away} ${g.awayScore} @ ${g.home} ${g.homeScore} · Final`
@@ -55,11 +57,11 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
       if (!/^\d+$/.test(away) || !/^\d+$/.test(home)) return setError('Enter both scores.');
       if (!winner) return setError('Pick a winner.');
       try {
-        const res = await overrideGameAction(g.id, Number(home), Number(away), winner);
+        const res = await call(overrideGameAction(g.id, Number(home), Number(away), winner));
         if (res.ok) setEditing(false);
         else setError(res.error);
-      } catch {
-        setError('Something went wrong. Please try again.');
+      } catch (e) {
+        setError(actionErrorMessage(e, 'Something went wrong. Please try again.'));
       }
     });
 
@@ -67,11 +69,11 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
     start(async () => {
       setError(null);
       try {
-        const res = await voidGameAction(g.id);
+        const res = await call(voidGameAction(g.id));
         if (res.ok) setEditing(false);
         else setError(res.error);
-      } catch {
-        setError('Something went wrong. Please try again.');
+      } catch (e) {
+        setError(actionErrorMessage(e, 'Something went wrong. Please try again.'));
       }
     });
 
@@ -79,11 +81,11 @@ export default function GameEditor({ game: g }: { game: AdminGame }) {
     start(async () => {
       setError(null);
       try {
-        const res = await clearOverrideAction(g.id);
+        const res = await call(clearOverrideAction(g.id));
         if (res.ok) setEditing(false);
         else setError(res.error);
-      } catch {
-        setError('Something went wrong. Please try again.');
+      } catch (e) {
+        setError(actionErrorMessage(e, 'Something went wrong. Please try again.'));
       }
     });
 

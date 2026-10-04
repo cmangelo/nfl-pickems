@@ -1,7 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
+import { useAction } from '@/components/use-action';
+import { actionErrorMessage } from '@/lib/action-timeout';
 
 /** Two-step "Remove this entry" (no browser dialog). `action` is a server action bound to the entry. */
 export default function RemoveEntryButton({
@@ -20,21 +22,22 @@ export default function RemoveEntryButton({
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const { pending, run, call, stillHere } = useAction();
 
   const remove = () =>
-    startTransition(async () => {
+    run(async () => {
       setError(null);
       try {
-        const res = await action();
+        const res = await call(action());
         if (!res.ok) {
           setError(res.error);
           return;
         }
+        if (!stillHere()) return;
         router.replace(afterHref);
         router.refresh();
-      } catch {
-        setError('Something went wrong. Please try again.');
+      } catch (e) {
+        setError(actionErrorMessage(e, 'Something went wrong. Please try again.'));
       }
     });
 

@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { Ellipsis } from 'lucide-react';
+import { useAction } from '@/components/use-action';
+import { actionErrorMessage } from '@/lib/action-timeout';
 import { removeUserAction, resetPinAction, setAdminAction } from '../actions';
 
 export interface PlayerRow {
@@ -18,19 +20,19 @@ function Player({ u, isMe }: { u: PlayerRow; isMe: boolean }) {
   const [menu, setMenu] = useState(false);
   const [pin, setPin] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [pending, start] = useTransition();
+  const { pending, run: start, call } = useAction();
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, okText?: string, after?: () => void) =>
     start(async () => {
       setMsg(null);
       try {
-        const res = await fn();
+        const res = await call(fn());
         if (res.ok) {
           if (okText) setMsg({ ok: true, text: okText });
           after?.();
         } else setMsg({ ok: false, text: res.error ?? 'Something went wrong.' });
-      } catch {
-        setMsg({ ok: false, text: 'Something went wrong. Please try again.' });
+      } catch (e) {
+        setMsg({ ok: false, text: actionErrorMessage(e, 'Something went wrong. Please try again.') });
       }
     });
 

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
+import { useAction } from '@/components/use-action';
+import { SLOW_ACTION_TIMEOUT_MS, actionErrorMessage } from '@/lib/action-timeout';
 import { setLockAction, syncNowAction } from '../actions';
 
 const btn = 'h-10 rounded-lg border-[1.5px] border-border bg-surface-2 px-3 text-sm font-semibold text-fg disabled:opacity-60';
@@ -8,15 +10,15 @@ const primary = 'h-10 rounded-lg bg-accent px-3 text-sm font-bold text-on-accent
 
 export function SyncPanel({ weekId, lastSynced }: { weekId: number; lastSynced: string }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [pending, start] = useTransition();
+  const { pending, run: start, call } = useAction();
   const run = () =>
     start(async () => {
       setMsg(null);
       try {
-        const res = await syncNowAction(weekId);
+        const res = await call(syncNowAction(weekId), SLOW_ACTION_TIMEOUT_MS);
         setMsg(res.ok ? { ok: true, text: res.message ?? 'Synced.' } : { ok: false, text: res.error });
-      } catch {
-        setMsg({ ok: false, text: 'Sync failed. Please try again.' });
+      } catch (e) {
+        setMsg({ ok: false, text: actionErrorMessage(e, 'Sync failed. Please try again.') });
       }
     });
   return (
@@ -50,17 +52,17 @@ export function LockPanel({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(inputValue);
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const { pending, run: start, call } = useAction();
 
   const save = (v: string | null) =>
     start(async () => {
       setError(null);
       try {
-        const res = await setLockAction(weekId, v);
+        const res = await call(setLockAction(weekId, v));
         if (res.ok) setEditing(false);
         else setError(res.error);
-      } catch {
-        setError('Something went wrong. Please try again.');
+      } catch (e) {
+        setError(actionErrorMessage(e, 'Something went wrong. Please try again.'));
       }
     });
 

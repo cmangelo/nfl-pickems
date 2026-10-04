@@ -1,8 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import TeamLogo from '@/components/TeamLogo';
+import { useAction } from '@/components/use-action';
+import { actionErrorMessage } from '@/lib/action-timeout';
 import type { Side } from '@/lib/scoring';
 import { submitPicksAction, type SubmitState } from './actions';
 
@@ -57,7 +59,7 @@ export default function PicksForm({
   const [tb, setTb] = useState(initialTiebreaker === null ? '' : String(initialTiebreaker));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(initialSaved);
-  const [pending, startTransition] = useTransition();
+  const { pending, run, call, stillHere } = useAction();
   // A save that creates an entry navigates to it; until then the form must not save again (it would add another).
   const [navigating, setNavigating] = useState(false);
 
@@ -92,12 +94,13 @@ export default function PicksForm({
   const submit = () => {
     if (!ready || pending || navigating) return;
     setError(null);
-    startTransition(async () => {
+    run(async () => {
       try {
-        const res = await (submitAction ? submitAction(picks, Number(tb)) : submitPicksAction(weekId, picks, Number(tb), target));
+        const res = await call(submitAction ? submitAction(picks, Number(tb)) : submitPicksAction(weekId, picks, Number(tb), target));
         if (res.ok) {
           setSaved(true);
-          if (savedHrefBase && res.entryId) {
+          // Not if the user tapped another tab while saving: the save must not pull them back here.
+          if (savedHrefBase && res.entryId && stillHere()) {
             setNavigating(true);
             router.replace(`${savedHrefBase}${res.entryId}`);
           }
@@ -105,9 +108,9 @@ export default function PicksForm({
           setSaved(false);
           setError(res.error);
         }
-      } catch {
+      } catch (e) {
         setSaved(false);
-        setError('Something went wrong. Please try again.');
+        setError(actionErrorMessage(e, 'Something went wrong. Please try again.'));
       }
     });
   };
