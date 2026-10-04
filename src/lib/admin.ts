@@ -4,6 +4,7 @@ import { getDb } from '@/db';
 import { entries, sessions, users, weeks } from '@/db/schema';
 import { validatePin } from './auth';
 import { hashPin } from './pin';
+import { MAX_FEE_CENTS } from './pot';
 import { PT, ptWallTimeToUtc } from './time';
 import { weekState } from './weeks';
 
@@ -28,6 +29,14 @@ export function fromPtInputValue(value: string): Date | null {
 export async function setPaid(entryId: number, paid: boolean): Promise<boolean> {
   const db = await getDb();
   const rows = await db.update(entries).set({ paid }).where(eq(entries.id, entryId)).returning({ id: entries.id });
+  return rows.length > 0;
+}
+
+/** Sets (or with null clears) a week's own entry fee in cents; later weeks without one carry it over. */
+export async function setEntryFee(weekId: number, cents: number | null): Promise<boolean> {
+  if (cents !== null && !(Number.isInteger(cents) && cents >= 0 && cents <= MAX_FEE_CENTS)) return false;
+  const db = await getDb();
+  const rows = await db.update(weeks).set({ entryFeeCents: cents }).where(eq(weeks.id, weekId)).returning({ id: weeks.id });
   return rows.length > 0;
 }
 

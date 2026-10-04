@@ -9,6 +9,7 @@ import { requireAdmin } from '@/lib/auth';
 import { getEspnClient } from '@/lib/espn';
 import { isId, parseEntryTarget } from '@/lib/validate';
 import { deleteEntry, submitPicks } from '@/lib/picks';
+import { parseFeeInput } from '@/lib/pot';
 import { importSeason, loadSeasonSchedule } from '@/lib/schedule';
 import type { Side } from '@/lib/scoring';
 import { adminOverrideGame, clearOverride, syncScores, voidGame } from '@/lib/sync';
@@ -31,6 +32,17 @@ export async function setPaidAction(entryId: number, paid: boolean): Promise<Act
   await requireAdmin();
   if (!isId(entryId)) return bad(INVALID);
   if (!(await admin.setPaid(Number(entryId), !!paid))) return bad('Entry not found.');
+  refresh();
+  return { ok: true };
+}
+
+/** Sets the week's entry fee from the admin's input ("10", "12.50"); empty carries over the earlier week's fee. */
+export async function setEntryFeeAction(weekId: number, value: string): Promise<ActionResult> {
+  await requireAdmin();
+  if (!isId(weekId) || typeof value !== 'string' || value.length > 20) return bad(INVALID);
+  const parsed = parseFeeInput(value);
+  if (!parsed.ok) return bad(parsed.error);
+  if (!(await admin.setEntryFee(Number(weekId), parsed.cents))) return bad('Week not found.');
   refresh();
   return { ok: true };
 }

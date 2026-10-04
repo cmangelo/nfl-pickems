@@ -1,8 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { RotateCcw } from 'lucide-react';
 import TeamLogo from '@/components/TeamLogo';
+import { draftKeyWeek, makeDraft, readDraft, serializeDraftState } from '@/lib/picks-draft';
 import type { Side } from '@/lib/scoring';
 import { submitPicksAction, type SubmitState } from './actions';
 
@@ -20,6 +22,15 @@ export interface FormDay {
 
 const TB_MAX = 200;
 
+/** localStorage, or null where it is unavailable (private mode, blocked storage). */
+function storage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 export default function PicksForm({
   weekId,
   days,
@@ -33,6 +44,7 @@ export default function PicksForm({
   target,
   savedHrefBase,
   initialSaved = false,
+  draft,
 }: {
   weekId: number;
   days: FormDay[];
@@ -50,6 +62,11 @@ export default function PicksForm({
   savedHrefBase?: string;
   /** Show the "saved" notice on mount (after navigating to a just-created entry). */
   initialSaved?: boolean;
+  /**
+   * Keep unsaved picks in this browser under `key` (the player's own picks page only). A draft fills the form
+   * back in on return (never submitted by itself), and only while the saved entry is unchanged since it started.
+   */
+  draft?: { key: string; userId: number };
 }) {
   const router = useRouter();
   const allGames = days.flatMap((d) => d.games);
@@ -60,6 +77,76 @@ export default function PicksForm({
   const [pending, startTransition] = useTransition();
   // A save that creates an entry navigates to it; until then the form must not save again (it would add another).
   const [navigating, setNavigating] = useState(false);
+  // Saved state the draft is measured against: the entry as the server last rendered it.
+  const base = serializeDraftState({ picks: initialPicks, tb: initialTiebreaker === null ? '' : String(initialTiebreaker) });
+  const [restored, setRestored] = useState(false);
+  // "Clear picks" asks for a second tap before wiping a form with no submitted entry behind it.
+  const [confirmClear, setConfirmClear] = useState(false);
+  // Drafts are written only after the stored one was read, so loading the page never overwrites it.
+  const [draftChecked, setDraftChecked] = useState(false);
+  const mountRef = useRef({ base, gameIds: allGames.map((g) => g.id) });
+  // Primitives, so a server refresh (new props object) never re-runs the mount-time read.
+  const draftKey = draft?.key;
+  const draftUserId = draft?.userId;
+
+  useEffect(() => {
+    if (!draftKey || draftUserId === undefined) return;
+    const ls = storage();
+    try {
+      if (ls) {
+        // Drafts for other weeks can never be used again (only the current week is open).
+        for (let i = ls.length - 1; i >= 0; i--) {
+          const k = ls.key(i);
+          const w = k ? draftKeyWeek(k, draftUserId) : null;
+          if (k && w !== null && w !== weekId) ls.removeItem(k);
+        }
+        const found = readDraft(ls.getItem(draftKey), mountRef.current.base, mountRef.current.gameIds);
+        if (found) {
+          setPicks(found.picks);
+          setTb(found.tb);
+          setRestored(true);
+        } else ls.removeItem(draftKey);
+      }
+    } catch {
+      // Storage can throw (quota, privacy settings): the form works without drafts.
+    }
+    setDraftChecked(true);
+  }, [draftKey, draftUserId, weekId]);
+
+  useEffect(() => {
+    if (!draftKey || !draftChecked) return;
+    try {
+      const ls = storage();
+      if (!ls) return;
+      if (serializeDraftState({ picks, tb }) === base) ls.removeItem(draftKey);
+      else ls.setItem(draftKey, makeDraft(base, { picks, tb }));
+    } catch {
+      // Ignore: drafts are a convenience.
+    }
+  }, [draftKey, draftChecked, picks, tb, base]);
+
+  const clearDraft = () => {
+    if (!draftKey) return;
+    try {
+      storage()?.removeItem(draftKey);
+    } catch {
+      // Ignore.
+    }
+  };
+  const dirty = serializeDraftState({ picks, tb }) !== base;
+  /** Back to the submitted picks (or a blank form / the copied picks when nothing is submitted yet). */
+  const reset = () => {
+    if (!hasEntry && !confirmClear) {
+      setConfirmClear(true);
+      return;
+    }
+    setPicks(initialPicks);
+    setTb(initialTiebreaker === null ? '' : String(initialTiebreaker));
+    setConfirmClear(false);
+    setRestored(false);
+    setError(null);
+    clearDraft();
+  };
 
   // The "saved" notice came from ?saved=1 after creating an entry: drop the param so a reload doesn't repeat it.
   useEffect(() => {
@@ -87,6 +174,7 @@ export default function PicksForm({
   const choose = (id: number, side: Side) => {
     setPicks((p) => ({ ...p, [id]: side }));
     setSaved(false);
+    setConfirmClear(false);
   };
 
   const submit = () => {
@@ -96,7 +184,9 @@ export default function PicksForm({
       try {
         const res = await (submitAction ? submitAction(picks, Number(tb)) : submitPicksAction(weekId, picks, Number(tb), target));
         if (res.ok) {
+          clearDraft();
           setSaved(true);
+          setRestored(false);
           if (savedHrefBase && res.entryId) {
             setNavigating(true);
             router.replace(`${savedHrefBase}${res.entryId}`);
@@ -126,9 +216,34 @@ export default function PicksForm({
       }}
       className="flex flex-col gap-5"
     >
-      <p data-testid="progress" className="text-sm font-semibold">
-        {pickedCount}/{allGames.length} picked
-      </p>
+      {restored && dirty && !saved && (
+        <p data-testid="draft-restored" className="rounded-lg border border-accent/60 bg-accent/10 px-3 py-2 text-sm">
+          Picked up where you left off on this device.{' '}
+          <span className="text-muted">
+            {hasEntry
+              ? "These changes aren't saved yet: tap Update picks to keep them."
+              : "They aren't submitted yet."}
+          </span>
+        </p>
+      )}
+
+      <div className="flex min-h-9 items-center justify-between gap-3">
+        <p data-testid="progress" className="text-sm font-semibold">
+          {pickedCount}/{allGames.length} picked
+          {hasEntry && dirty && !pending && <span data-testid="unsaved" className="ml-2 font-normal text-accent-bright">· unsaved changes</span>}
+        </p>
+        {dirty && !pending && !navigating && (
+          <button
+            type="button"
+            data-testid="reset-picks"
+            onClick={reset}
+            className="flex h-9 items-center gap-1.5 rounded-lg border-[1.5px] border-border bg-surface-2 px-3 text-sm font-semibold text-fg"
+          >
+            <RotateCcw size={14} aria-hidden="true" />
+            {hasEntry ? 'Undo changes' : confirmClear ? 'Tap again to clear' : 'Clear picks'}
+          </button>
+        )}
+      </div>
 
       {days.map((d) => (
         <section key={d.key} aria-label={d.label} className="flex flex-col gap-3">
@@ -177,6 +292,7 @@ export default function PicksForm({
           onChange={(e) => {
             setTb(e.target.value.replace(/\D/g, '').slice(0, 3));
             setSaved(false);
+            setConfirmClear(false);
           }}
           className="h-12 w-full rounded-[10px] border border-border bg-surface-2 px-3 text-lg text-fg"
         />

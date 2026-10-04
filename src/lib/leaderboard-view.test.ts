@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  tiebreakerShortLabel,
+  avatarColors,
+  initial,
+  pickResults,
   formatUpdatedAgo,
   joinNames,
   entriesLabel,
@@ -75,4 +79,50 @@ describe('winnerBanner', () => {
       names: 'Al and Bo',
       detail: '3 of 4 correct · tied, co-winners',
     }));
+});
+
+describe('pickResults', () => {
+  const g = (id: number, h: number, over: object = {}) => ({
+    id,
+    kickoffAt: new Date(Date.UTC(2026, 9, 11, h)),
+    status: 'scheduled' as const,
+    winner: null,
+    ...over,
+  });
+  it('one mark per game in kickoff order', () => {
+    const games = [
+      g(5, 23, { status: 'final', winner: 'away' }),
+      g(1, 17, { status: 'final', winner: 'home' }),
+      g(2, 18, { status: 'final', winner: 'tie' }),
+      g(3, 19, { status: 'void' }),
+      g(4, 20, { status: 'postponed' }),
+      g(6, 22),
+    ] as Parameters<typeof pickResults>[0];
+    expect(pickResults(games, { 1: 'home', 2: 'home', 3: 'home', 4: 'away', 5: 'home' })).toEqual([
+      { gameId: 1, result: 'right' },
+      { gameId: 2, result: 'tie' },
+      { gameId: 3, result: 'void' },
+      { gameId: 4, result: 'pending' },
+      { gameId: 6, result: 'none' },
+      { gameId: 5, result: 'wrong' },
+    ]);
+  });
+});
+
+describe('avatars', () => {
+  it('stable colors per user and an uppercase initial', () => {
+    expect(avatarColors(3)).toEqual(avatarColors(11));
+    expect(avatarColors(3)).not.toEqual(avatarColors(4));
+    expect(initial('ann (2)')).toBe('A');
+    expect(initial('  ')).toBe('?');
+  });
+});
+
+describe('tiebreakerShortLabel', () => {
+  it('MNF for a Monday (PT) game, TB otherwise', () => {
+    expect(tiebreakerShortLabel({ kickoffAt: new Date('2026-10-13T00:15:00Z') })).toBe('MNF'); // Mon 5:15 PM PDT
+    expect(tiebreakerShortLabel({ kickoffAt: new Date('2026-10-12T00:20:00Z') })).toBe('TB'); // Sun 5:20 PM PDT (Mon in UTC)
+    expect(tiebreakerShortLabel({ kickoffAt: new Date('2027-01-09T21:30:00Z') })).toBe('TB'); // Saturday
+    expect(tiebreakerShortLabel(null)).toBe('TB');
+  });
 });

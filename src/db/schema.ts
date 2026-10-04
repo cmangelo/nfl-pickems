@@ -48,6 +48,8 @@ export const weeks = pgTable(
     lockOverrideAt: timestamp('lock_override_at', { withTimezone: true }),
     /** Tiebreaker game, frozen the first time the week is viewed/saved at or after its lock. */
     tiebreakerGameId: integer('tiebreaker_game_id'),
+    /** Entry fee in cents set from this week on; null = carry over the latest earlier week's fee (see pot.ts). */
+    entryFeeCents: integer('entry_fee_cents'),
   },
   (t) => [uniqueIndex('weeks_season_week_idx').on(t.season, t.weekNumber)],
 );
