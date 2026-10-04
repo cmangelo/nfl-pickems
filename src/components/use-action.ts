@@ -37,7 +37,12 @@ export function useAction() {
   const run = useCallback((fn: () => Promise<void>) => {
     left.current = false;
     const onClick = (e: MouseEvent) => {
-      if (e.target instanceof Element && e.target.closest('a[href]')) left.current = true;
+      const a = e.target instanceof Element ? e.target.closest('a[href]') : null;
+      // Only a click that navigates this tab (same rules as next/link): not new-tab/window, not a download.
+      const elsewhere = e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0;
+      if (a && !elsewhere && !a.hasAttribute('download') && (a.getAttribute('target') ?? '_self') === '_self') {
+        left.current = true;
+      }
     };
     const onPop = () => {
       left.current = true;

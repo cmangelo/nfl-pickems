@@ -52,7 +52,7 @@ function TabBody({ Icon, label, on }: { Icon: LucideIcon; label: string; on: boo
   return (
     <span
       data-pending={pending ? 'true' : undefined}
-      className={`flex flex-col items-center gap-0.5 ${pending ? 'text-accent-bright' : ''}`}
+      className={`contents ${pending ? 'text-accent-bright' : ''}`}
     >
       <Icon size={22} strokeWidth={on || pending ? 2.4 : 2} aria-hidden="true" className={pending ? 'animate-pulse' : ''} />
       {label}

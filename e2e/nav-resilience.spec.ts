@@ -168,3 +168,23 @@ test('@smoke the tapped tab lights up while its page loads', async ({ page, cont
   await expect(tab(page, 'Games')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('[data-pending="true"]')).toHaveCount(0);
 });
+
+test('opening a link in a new tab while saving a new entry still moves the form to that entry', async ({ page, context, request }) => {
+  const { gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  await setNow(context, WED);
+  await loginAs(page, 'admin');
+  await page.goto('/picks');
+  await fillOpenWeek(page, gameIds);
+
+  const actions = await hold(page, isAction);
+  await page.getByRole('button', { name: 'Submit picks' }).click();
+  await expect(page.getByRole('button', { name: 'Saving…' })).toBeVisible();
+  const popup = context.waitForEvent('page');
+  await tab(page, 'Leaderboard').click({ modifiers: ['ControlOrMeta'] });
+  await (await popup).close();
+  await actions.release();
+
+  // The user never left: the saved entry is now the one being edited, so "Update picks" can't add a second entry.
+  await expect(page).toHaveURL(/\/picks\?.*entry=\d+/);
+  await expect(page.getByRole('button', { name: 'Update picks' })).toBeVisible();
+});
