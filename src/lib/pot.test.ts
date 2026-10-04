@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computePot, effectiveEntryFee, feeInputValue, formatMoney, parseFeeInput, payoutLine, potDetail, potLine } from './pot';
+import { computePot, effectiveEntryFee, feeInputValue, formatMoney, parseFeeInput, paymentStatus, payoutLine, potDetail, potLine } from './pot';
 
 const w = (season: number, weekNumber: number, entryFeeCents: number | null) => ({ season, weekNumber, entryFeeCents });
 
@@ -76,5 +76,26 @@ describe('pot copy', () => {
     expect(payoutLine(computePot(1000, 0), 1)).toBeNull();
     expect(payoutLine(null, 1)).toBeNull();
     expect(payoutLine(computePot(1000, 4), 0)).toBeNull();
+  });
+});
+
+describe('paymentStatus', () => {
+  it('paid, with and without a fee', () => {
+    expect(paymentStatus(true, 1000)).toEqual({ paid: true, title: 'Paid', detail: '$10 entry fee received · counts in the standings' });
+    expect(paymentStatus(true, null)).toEqual({ paid: true, title: 'Paid', detail: 'Counts in the standings' });
+  });
+
+  it('unpaid names the fee when one is set', () => {
+    expect(paymentStatus(false, 750)).toEqual({
+      paid: false,
+      title: 'Not paid yet',
+      detail: '$7.50 entry fee · Counts in the standings once an admin marks it paid',
+    });
+  });
+
+  it('a free week ($0 or no fee) still says unpaid entries are not counted', () => {
+    for (const fee of [0, null, undefined]) {
+      expect(paymentStatus(false, fee)).toEqual({ paid: false, title: 'Not paid yet', detail: 'Counts in the standings once an admin marks it paid' });
+    }
   });
 });

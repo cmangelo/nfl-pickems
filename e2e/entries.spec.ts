@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { TEAM_COLORS, barColors } from '../src/lib/team-colors';
-import { createUser, expectNoPlayerCountOf, loginAs, resetDb, seedWeek, setNow, setPaid, setResult, submitPicksFor } from './helpers';
+import { createUser, expectNoPlayerCountOf, loginAs, resetDb, seedWeek, setEntryFee, setNow, setPaid, setResult, submitPicksFor } from './helpers';
 
 /** Several entries per player per week: each is a separate fee, paid, ranked and shown on its own. */
 
@@ -191,6 +191,78 @@ test('payments: a player with several entries gets one switch per entry', async 
   await expect(page.getByTestId('entry-tab-2')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('picks-hidden-notice')).toBeVisible();
   await expect(page.getByTestId('add-entry-copy')).toHaveCount(0);
+});
+
+test('@smoke a player sees which of their entries an admin marked paid', async ({ page, context, request }) => {
+  const { weekId } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  await setEntryFee(request, weekId, 1000);
+  await createUser(request, 'Ann', 'ann');
+  await submitPicksFor(request, 'ann', weekId, [H, H], 40);
+  await submitPicksFor(request, 'ann', weekId, [A, A], 41, 'new');
+  await setNow(context, WED);
+  await loginAs(page, 'ann');
+
+  await page.goto(`/picks?week=${weekId}`);
+  const status = page.getByTestId('paid-status');
+  await expect(status).toHaveAttribute('data-paid', 'false');
+  await expect(page.getByTestId('paid-status-title')).toHaveText('Not paid yet');
+  await expect(page.getByTestId('paid-status-detail')).toHaveText('$10 entry fee · Counts in the standings once an admin marks it paid');
+  for (const k of ['1', '2']) {
+    await expect(page.getByTestId(`entry-tab-${k}`)).toHaveAttribute('data-paid', 'false');
+    await expect(page.getByTestId(`entry-tab-${k}-paid`)).toHaveCount(0);
+  }
+
+  // The admin marks Entry 2 paid on the Payments tab.
+  await loginAs(page, 'admin');
+  await page.goto(`/admin/payments?week=${weekId}`);
+  await page.getByRole('switch', { name: 'Ann (2) paid' }).click();
+  await expect(page.getByRole('switch', { name: 'Ann (2) paid' })).toHaveAttribute('aria-checked', 'true');
+
+  await loginAs(page, 'ann');
+  await page.goto(`/picks?week=${weekId}`);
+  await expect(page.getByTestId('entry-tab-1')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('paid-status-title')).toHaveText('Not paid yet');
+  await expect(page.getByTestId('entry-tab-1-paid')).toHaveCount(0);
+  await expect(page.getByTestId('entry-tab-2-paid')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Entry 2, paid' })).toBeVisible();
+
+  await page.getByTestId('entry-tab-2').click();
+  await expect(page.getByTestId('entry-tab-2')).toHaveAttribute('aria-current', 'page');
+  await expect(status).toHaveAttribute('data-paid', 'true');
+  await expect(page.getByTestId('paid-status-title')).toHaveText('Paid');
+  await expect(page.getByTestId('paid-status-detail')).toHaveText('$10 entry fee received · counts in the standings');
+
+  // Starting a new entry has no payment status yet.
+  await page.getByTestId('add-entry-blank').click();
+  await expect(page.getByTestId('new-entry-notice')).toBeVisible();
+  await expect(status).toHaveCount(0);
+
+  // Still shown once the week locks.
+  await setNow(context, FRI);
+  await page.goto(`/picks?week=${weekId}`);
+  await expect(page.getByTestId('paid-status-title')).toHaveText('Not paid yet');
+  await expect(page.getByTestId('entry-tab-2-paid')).toBeVisible();
+  await page.getByTestId('entry-tab-2').click();
+  await expect(page.getByTestId('paid-status-title')).toHaveText('Paid');
+  await expectNoPlayerCountOf(page);
+});
+
+test('a single entry shows its payment status without tabs (no fee set)', async ({ page, context, request }) => {
+  const { weekId } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
+  await createUser(request, 'Ann', 'ann');
+  await submitPicksFor(request, 'ann', weekId, [H, H], 40);
+  await setNow(context, WED);
+  await loginAs(page, 'ann');
+  await page.goto(`/picks?week=${weekId}`);
+  await expect(page.getByTestId('entry-tabs')).toHaveCount(0);
+  await expect(page.getByTestId('paid-status-title')).toHaveText('Not paid yet');
+  await expect(page.getByTestId('paid-status-detail')).toHaveText('Counts in the standings once an admin marks it paid');
+
+  await setPaid(request, 'ann', weekId, true);
+  await page.reload();
+  await expect(page.getByTestId('paid-status')).toHaveAttribute('data-paid', 'true');
+  await expect(page.getByTestId('paid-status-title')).toHaveText('Paid');
+  await expect(page.getByTestId('paid-status-detail')).toHaveText('Counts in the standings');
 });
 
 test('admin adds an entry for a player after the lock, then deletes it', async ({ page, context, request }) => {

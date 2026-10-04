@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import NoWeeks from '@/components/NoWeeks';
+import PaidStatus from '@/components/PaidStatus';
 import { requireUser } from '@/lib/auth';
 import { selectEntry } from '@/lib/entry-select';
 import { getEntries } from '@/lib/picks';
@@ -7,6 +8,7 @@ import { draftKey } from '@/lib/picks-draft';
 import { getSelectedWeek } from '@/lib/selected-week';
 import { formatPT, now as getNow } from '@/lib/time';
 import { refreshWithBudget } from '@/lib/sync';
+import { loadEntryFee } from '@/lib/week-data';
 import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
 import { groupGamesByPtDay } from '@/lib/week-view';
 import { deleteEntryAction } from './actions';
@@ -48,9 +50,12 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
   const base = `/picks?week=${week.id}`;
   const entryName = (i: number) => `Entry ${i + 1}`;
   const tabs = [
-    ...mine.map((e, i) => ({ key: String(i + 1), label: entryName(i), href: `${base}&entry=${e.entryId}`, current: e === entry })),
+    ...mine.map((e, i) => ({ key: String(i + 1), label: entryName(i), href: `${base}&entry=${e.entryId}`, current: e === entry, paid: e.paid })),
     ...(isNew ? [{ key: 'new', label: 'New entry', href: `${base}&entry=new`, current: true }] : []),
   ];
+  const fee = entry && !isNew ? await loadEntryFee(week) : null;
+  // The selected saved entry's payment status (not while starting a new entry).
+  const paidStatus = entry && !isNew ? <PaidStatus paid={entry.paid} feeCents={fee?.cents ?? null} /> : null;
 
   let body: React.ReactNode;
   if (state === 'open') {
@@ -67,6 +72,7 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
           <Countdown lockAt={lock.toISOString()} serverNow={t.toISOString()} />
         </div>
         <EntryTabs tabs={tabs} />
+        {paidStatus}
         {isNew && (
           <p data-testid="new-entry-notice" className="mb-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted">
             {copyFrom ? `New entry, starting from ${entryName(mine.indexOf(copyFrom))}'s picks. ` : 'New entry. '}
@@ -128,6 +134,7 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
     body = (
       <>
         <EntryTabs tabs={tabs} />
+        {paidStatus}
         <LockedPicks
           games={games}
           entry={entry}

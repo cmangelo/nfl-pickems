@@ -97,3 +97,23 @@ export function payoutLine(pot: Pot | null, winners: number): string | null {
   if (winners === 1) return `Wins the ${total} pot`;
   return `Split the ${total} pot · ${formatMoney(Math.floor(pot.totalCents / winners))} each`;
 }
+
+export interface PaymentStatus {
+  paid: boolean;
+  title: string;
+  detail: string;
+}
+
+/**
+ * What a player sees about their own entry's payment: "Paid" or "Not paid yet", with the fee when one is set.
+ * Unpaid entries are left out of the standings whatever the fee, so that is said even for a free week.
+ */
+export function paymentStatus(paid: boolean, feeCents: number | null | undefined): PaymentStatus {
+  const fee = feeCents && feeCents > 0 ? formatMoney(feeCents) : null;
+  if (paid) return { paid, title: 'Paid', detail: fee ? `${fee} entry fee received · counts in the standings` : 'Counts in the standings' };
+  return {
+    paid,
+    title: 'Not paid yet',
+    detail: `${fee ? `${fee} entry fee · ` : ''}Counts in the standings once an admin marks it paid`,
+  };
+}
