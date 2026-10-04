@@ -40,13 +40,13 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
     return (
       <div className="flex flex-col gap-4">
         <h1 className="sr-only">Leaderboard</h1>
+        {openPot && <PotCard pot={openPot} open />}
         <RevealedCard
           lockShort={formatPT(effectiveLock(week), "EEE h:mm a 'PT'")}
           names={entries.filter((e) => e.entryIndex === 0).map((e) => ({ userId: e.userId, firstName: e.firstName, entries: e.entryCount }))}
           count={entries.length}
           viewerId={user.id}
         />
-        {openPot && <PotCard pot={openPot} open />}
       </div>
     );
   }

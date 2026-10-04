@@ -104,12 +104,11 @@ export function RankedTable({
                       )}
                     </span>
                     <span className="text-xs text-muted">
-                      TB{' '}
+                      MNF{' '}
                       <span data-testid="tb-guess">
                         {e.tiebreaker}
                         {showDiff && e.tiebreakerDiff !== null && <> {tiebreakerDiffLabel(e.tiebreakerDiff)}</>}
                       </span>
-                      {live && e.pending > 0 && <> · {e.pending} to play</>}
                     </span>
                     <PickStrip games={games} picks={e.picks} />
                   </span>

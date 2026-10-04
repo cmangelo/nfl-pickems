@@ -236,7 +236,7 @@ test('live leaderboard: no OUT tags while everyone can still win', async ({ page
   await expect(page.getByTestId('out-footnote')).toHaveCount(0);
 });
 
-test('standings rows: avatar, tiebreaker, pick strip and MAX while live', async ({ page, context, request }) => {
+test('standings rows: avatar, MNF tiebreaker guess, pick strip and MAX while live', async ({ page, context, request }) => {
   const { gameIds } = await seedPlayers(request);
   await setResult(request, gameIds[0], 'home');
   await setResult(request, gameIds[1], 'away');
@@ -247,7 +247,8 @@ test('standings rows: avatar, tiebreaker, pick strip and MAX while live', async 
   const bob = page.locator('[data-testid^="rank-row-"]').filter({ hasText: 'Bob' });
   await expect(bob.getByTestId('correct-count')).toHaveText('1');
   await expect(bob.getByTestId('max-count')).toHaveText('3');
-  await expect(bob).toContainText('TB 50 · 2 to play');
+  await expect(bob).toContainText('MNF 50');
+  await expect(bob).not.toContainText('to play');
   await expect(bob.getByTestId('pick-strip').locator('[data-result]')).toHaveCount(4);
   const marks = await bob.getByTestId('pick-strip').locator('[data-result]').evaluateAll((els) => els.map((e) => e.getAttribute('data-result')));
   expect(marks).toEqual(['right', 'wrong', 'pending', 'pending']);

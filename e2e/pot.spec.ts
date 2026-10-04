@@ -88,6 +88,9 @@ test('players see the pot: filling while open, live, then the payout on the reca
   await setNow(context, WED);
   await page.goto('/leaderboard');
   await expect(page.getByTestId('pot')).toContainText('Pot so far');
+  const potBox = await page.getByTestId('pot').boundingBox();
+  const revealBox = await page.getByTestId('revealed-card').boundingBox();
+  expect(potBox!.y).toBeLessThan(revealBox!.y);
   await expect(page.getByTestId('pot-amount')).toHaveText('$20');
   await expect(page.getByTestId('pot-detail')).toHaveText('2 paid entries × $10');
 
