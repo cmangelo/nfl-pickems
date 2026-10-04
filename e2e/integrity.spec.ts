@@ -128,6 +128,11 @@ test('M6: an admin cannot peek at others\' picks before the lock, edits are audi
   await loginAs(page, 'ann');
   await page.goto(`/picks?week=${weekId}`);
   await expect(page.getByTestId('admin-edited')).toHaveText('Edited by admin Admin · Wed 1:00 PM PT');
+  // The lock line and the audit line sit below the picks and the tiebreaker, not above them.
+  const y = async (id: string) => (await page.getByTestId(id).boundingBox())!.y;
+  expect(await y('locked-info')).toBeGreaterThan(await y('tiebreaker-guess'));
+  expect(await y('admin-edited')).toBeGreaterThan(await y(`game-${gameIds[gameIds.length - 1]}`));
+  await expect(page.getByTestId('locked-info')).toContainText('your pick is highlighted');
   await loginAs(page, 'bob');
   await page.goto(`/leaderboard/player/2?week=${weekId}`);
   await expect(page.getByTestId('admin-edited')).toHaveText('Edited by admin Admin · Wed 1:00 PM PT');
