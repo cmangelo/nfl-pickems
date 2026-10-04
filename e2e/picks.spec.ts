@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createUser, loginAs, resetDb, seedWeek, setNow, setPaid, setResult, submitPicksFor } from './helpers';
+import { createUser, loginAs, resetDb, seedWeek, setLive, setNow, setPaid, setResult, submitPicksFor } from './helpers';
 
 const WED = '2026-10-07T20:00:00Z'; // Wednesday of the week locking Thu Oct 8 12:00 PM PT
 const FRI = '2026-10-09T20:00:00Z';
@@ -107,6 +107,54 @@ test('locked week: read-only, results marked right / wrong / tie / pending, head
   await expect(page.getByTestId('status-pill')).toHaveAttribute('data-state', 'final');
   await expect(page.getByTestId('chip-pending')).toContainText('0');
   await expect(page.getByTestId(`game-${gameIds[3]}`)).toHaveAttribute('data-result', 'right');
+});
+
+test('@smoke locked week: live score, clock and winning / losing / tied on my picks; live never scores', async ({ page, context, request }) => {
+  const { weekId, gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 4, tuesday: WED });
+  const [g0, g1, g2, g3] = gameIds;
+  await submitPicksFor(request, 'admin', weekId, ['home', 'home', 'away', 'home'], 45);
+  await setLive(request, g0, { homeScore: 17, awayScore: 10, period: 3, clock: '4:12' }); // my home pick leads
+  await setLive(request, g1, { homeScore: 7, awayScore: 14, period: 2, clock: '0:00', status: 'STATUS_HALFTIME' }); // trails
+  await setLive(request, g2, { homeScore: 3, awayScore: 3, period: 1, clock: '9:30' }); // tied
+  await setNow(context, FRI);
+  await loginAs(page, 'admin');
+  await page.goto('/picks');
+
+  const g0Card = page.getByTestId(`game-${g0}`);
+  await expect(g0Card).toHaveAttribute('data-live', 'true');
+  await expect(page.getByTestId(`game-status-${g0}`)).toHaveAttribute('data-live', 'true');
+  await expect(page.getByTestId(`game-status-${g0}`)).toContainText('Q3 · 4:12');
+  await expect(page.getByTestId(`score-${g0}-home`)).toHaveText('17');
+  await expect(page.getByTestId(`score-${g0}-away`)).toHaveText('10');
+  await expect(page.getByTestId(`game-mark-${g0}`)).toHaveText('Winning');
+
+  await expect(page.getByTestId(`game-status-${g1}`)).toContainText('Halftime');
+  await expect(page.getByTestId(`score-${g1}-away`)).toHaveText('14');
+  await expect(page.getByTestId(`game-mark-${g1}`)).toHaveText('Losing');
+
+  await expect(page.getByTestId(`game-status-${g2}`)).toContainText('Q1 · 9:30');
+  await expect(page.getByTestId(`game-mark-${g2}`)).toHaveText('Tied');
+
+  // Not started: kickoff time, no score, still "Pending".
+  await expect(page.getByTestId(`game-${g3}`)).toHaveAttribute('data-live', 'false');
+  await expect(page.getByTestId(`game-status-${g3}`)).toContainText('PT');
+  await expect(page.getByTestId(`score-${g3}-home`)).toHaveCount(0);
+  await expect(page.getByTestId(`game-mark-${g3}`)).toHaveText('Pending');
+
+  // Live games never score: everything is still to play.
+  for (const id of gameIds) await expect(page.getByTestId(`game-${id}`)).toHaveAttribute('data-result', 'pending');
+  await expect(page.getByTestId('chip-correct-count')).toHaveText('0');
+  await expect(page.getByTestId('chip-pending-count')).toHaveText('4');
+
+  // Once it ends, the final result replaces the live line.
+  await setResult(request, g0, 'home', { homeScore: 24, awayScore: 10 });
+  await page.reload();
+  await expect(g0Card).toHaveAttribute('data-live', 'false');
+  await expect(g0Card).toHaveAttribute('data-result', 'right');
+  await expect(page.getByTestId(`game-status-${g0}`)).toHaveText('Final');
+  await expect(page.getByTestId(`score-${g0}-home`)).toHaveText('24');
+  await expect(page.getByTestId(`game-mark-${g0}`)).toHaveText('Correct');
+  await expect(page.getByTestId('chip-correct-count')).toHaveText('1');
 });
 
 test('locked week: a user who did not enter sees the notice', async ({ page, context, request }) => {
