@@ -28,9 +28,9 @@ function WinnerHero({ weekNumber, summary, pot }: { weekNumber: number; summary:
     <div
       data-testid="winner-banner"
       className="relative overflow-hidden rounded-2xl border border-accent/70 p-5 text-center"
-      style={{ background: 'radial-gradient(120% 100% at 50% 0%, rgba(251,191,36,0.32) 0%, rgba(251,191,36,0.08) 55%, rgba(24,27,34,1) 100%)' }}
+      style={{ background: 'radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--accent) 32%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 55%, var(--surface) 100%)' }}
     >
-      <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_0_28px_rgba(251,191,36,0.5)]">
+      <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_0_28px_color-mix(in_srgb,var(--accent)_50%,transparent)]">
         <Trophy size={30} aria-hidden="true" />
       </span>
       <div data-testid="winner-title" className="text-xs font-bold uppercase tracking-[0.18em] text-accent-bright">{banner.title}</div>
@@ -106,7 +106,7 @@ function GameCard({
     <div
       data-testid={testId}
       className="flex w-[11.5rem] shrink-0 snap-start flex-col rounded-2xl border border-border p-3"
-      style={{ background: `linear-gradient(180deg, ${tone}33 0%, rgba(24,27,34,1) 70%)` }}
+      style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${tone} 20%, transparent) 0%, var(--surface) 70%)` }}
     >
       <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: tone }}>
         <Icon size={14} aria-hidden="true" />
@@ -156,7 +156,7 @@ function AwardCard({
     <div
       data-testid={testId}
       className="flex min-w-0 flex-col rounded-2xl border border-border p-3"
-      style={{ background: `linear-gradient(160deg, ${tone}2e 0%, rgba(24,27,34,1) 65%)` }}
+      style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${tone} 18%, transparent) 0%, var(--surface) 65%)` }}
     >
       <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: tone }}>
         <Icon size={14} aria-hidden="true" />
@@ -301,7 +301,7 @@ export default function WeeklyReport({
             testId="stat-most"
             icon={Trophy}
             label="Most correct"
-            tone="#fbbf24"
+            tone="var(--accent-bright)"
             names={joinNames(stats.mostCorrect.names)}
             value={`${stats.mostCorrect.correct} correct`}
           />

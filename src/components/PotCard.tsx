@@ -8,10 +8,10 @@ export default function PotCard({ pot, open = false }: { pot: Pot; open?: boolea
       data-testid="pot"
       aria-label="Pot"
       className="relative overflow-hidden rounded-2xl border border-accent/50 p-4"
-      style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.22) 0%, rgba(251,191,36,0.06) 55%, rgba(24,27,34,1) 100%)' }}
+      style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent) 0%, color-mix(in srgb, var(--accent) 6%, transparent) 55%, var(--surface) 100%)' }}
     >
       <div className="flex items-center gap-4">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_0_24px_rgba(251,191,36,0.45)]">
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_0_24px_color-mix(in_srgb,var(--accent)_45%,transparent)]">
           <Coins size={28} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">

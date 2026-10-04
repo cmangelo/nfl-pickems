@@ -50,6 +50,7 @@ Playwright projects: `mobile` (390x844, touch, DPR 3; primary, runs everything) 
 - `PGLITE_DIR`: pglite data dir (default `.pglite/dev`)
 - `TEST_MODE=1`: enables `/api/test/*` (404 otherwise) and the `x-test-now` override. Never set in production
 - `ESPN_MODE=fixture`: use `fixtures/espn/` instead of the live feed
+- `THEME_TUNER=1`: staging-only accent color tuner (ignored when `VERCEL_ENV=production`)
 
 PGlite is single-process: the server process owns the DB. Seed/reset while it runs via the `/api/test/*` routes; the scripts are for when it is stopped.
 
@@ -83,6 +84,8 @@ In e2e, seed locked weeks with a `weekNumber` that has no ESPN fixture (e.g. 7):
 
 ## Theme
 Dark, amber accent. CSS variables in `src/app/globals.css`: `--bg #0f1115`, `--accent #fbbf24` (fills; text on it uses `text-on-accent` = `#1a1300`), `--accent-bright #fcd34d` (accent text on dark), `--on-accent #1a1300`, `--correct #22c55e`, `--wrong #ef4444`.
+Never hard-code accent colors in components: use the Tailwind tokens or `var(--accent)` / `color-mix(in srgb, var(--accent) N%, transparent)`, so the theme tuner can restyle everything.
+Theme tuner (staging only): with `THEME_TUNER=1` and `VERCEL_ENV` != `production` (`isThemeTunerEnabled`, theme-tuner.ts) the root layout marks `<html data-theme-tuner="1">`, adds `THEME_BOOT_SCRIPT` (applies a saved accent before paint) and renders `ThemeTuner` (bottom sheet opened from the account menu "Theme tuner": presets, hex/picker, auto-derived `--accent-bright`/`--on-accent` via `deriveTheme`, WCAG contrast checks, "Copy CSS" for globals.css, Reset). Saved in localStorage on that device only. The e2e server sets `THEME_TUNER=1`.
 
 ## Game statuses, lock rules, integrity helpers
 - Game status: `scheduled | final | postponed | void`. ESPN parser maps STATUS_POSTPONED/CANCELED/SUSPENDED to `postponed` (counts as pending); in-progress stays `scheduled`; a "completed" event with a missing score stays `scheduled`. `void` is admin-only (`voidGame`, sets `manual_override`; "Clear override" restores): it counts for nobody and is excluded from `gamesTotal`/correct/wrong, splits still shown greyed. A week is `final` when every game is `final` or `void`.

@@ -60,6 +60,7 @@ Delete `.env.local` afterwards if you don't want production credentials on your 
 - Migrations, the admin seed and the schedule import run automatically during the build (`vercel-build`). Without a `DATABASE_URL` the DB steps are skipped.
 - Crons run only on production; on a preview, use Admin → Games → "Sync from ESPN now".
 - `TEST_MODE` is ignored on Vercel (when `VERCEL` is set), so a preview can never expose the test routes or clock override.
+- **Theme tuner (optional):** set `THEME_TUNER=1` for the **Preview** environment only. The account menu then has "Theme tuner" to try accent colors live (saved in that browser only); "Copy CSS" gives the three lines to paste into `src/app/globals.css`. It is ignored on the Production environment even if set there.
 - The Vercel connector (<https://claude.ai/customize/connectors> → Vercel) lets Claude list deployments and read build logs.
 
 ## 5. Deploy

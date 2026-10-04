@@ -38,6 +38,8 @@ export default defineConfig({
     env: {
       TEST_MODE: '1',
       ESPN_MODE: 'fixture',
+      // Staging-only accent color tuner (account menu); e2e/theme-tuner.spec.ts covers it.
+      THEME_TUNER: '1',
       DB_DRIVER: 'memory',
       DATABASE_URL: '',
     },

@@ -2,12 +2,17 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { KeyRound, LogOut } from 'lucide-react';
+import { KeyRound, LogOut, Palette } from 'lucide-react';
 import { logoutAction } from '@/app/login/actions';
+import { OPEN_THEME_TUNER } from './ThemeTuner';
 
 export default function AvatarMenu({ initial }: { initial: string }) {
   const [open, setOpen] = useState(false);
+  // The staging-only theme tuner is on when the root layout marked <html data-theme-tuner="1">.
+  const [tuner, setTuner] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setTuner(document.documentElement.dataset.themeTuner === '1'), []);
 
   useEffect(() => {
     if (!open) return;
@@ -49,6 +54,20 @@ export default function AvatarMenu({ initial }: { initial: string }) {
             <KeyRound size={18} className="text-muted" aria-hidden="true" />
             Change PIN
           </Link>
+          {tuner && (
+            <button
+              role="menuitem"
+              type="button"
+              className={item}
+              onClick={() => {
+                setOpen(false);
+                window.dispatchEvent(new Event(OPEN_THEME_TUNER));
+              }}
+            >
+              <Palette size={18} className="text-muted" aria-hidden="true" />
+              Theme tuner
+            </button>
+          )}
           <form action={logoutAction}>
             <button role="menuitem" type="submit" className={item}>
               <LogOut size={18} className="text-muted" aria-hidden="true" />
