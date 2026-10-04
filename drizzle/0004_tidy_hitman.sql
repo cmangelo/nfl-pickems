@@ -1,0 +1,1 @@
+ALTER TABLE "weeks" ADD COLUMN "entry_fee_cents" integer;

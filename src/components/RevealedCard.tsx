@@ -4,6 +4,7 @@ export default function RevealedCard({
   names,
   count,
   viewerId,
+  pot,
 }: {
   lockShort: string;
   /** Players with submitted entries (paid or not), and how many entries each. Omit `names` to show the count only. */
@@ -11,6 +12,8 @@ export default function RevealedCard({
   /** Submitted entries (a player with two entries counts twice). */
   count: number;
   viewerId: number;
+  /** "$10 entry · $40 in the pot so far" when an entry fee is set (Leaderboard only). */
+  pot?: string | null;
 }) {
   return (
     <div data-testid="revealed-card" className="rounded-xl border border-border bg-surface p-4">
@@ -22,6 +25,11 @@ export default function RevealedCard({
         <span data-testid="in-count" className="text-3xl font-bold text-accent-bright">{count} in</span>
         <span className="text-sm text-muted">so far</span>
       </div>
+      {pot && (
+        <p data-testid="pot" className="mt-1 text-sm font-semibold text-accent-bright">
+          {pot}
+        </p>
+      )}
       {names && (
         count === 0 ? (
           <p data-testid="in-empty" className="mt-2 text-sm text-muted">Nobody has submitted yet.</p>

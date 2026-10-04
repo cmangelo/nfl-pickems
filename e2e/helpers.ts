@@ -99,6 +99,12 @@ export async function setPaid(request: APIRequestContext, username: string, week
   expect(res.ok(), `set paid ${username}`).toBeTruthy();
 }
 
+/** Sets a week's own entry fee in cents (null clears it; later weeks carry it over). */
+export async function setEntryFee(request: APIRequestContext, weekId: number, cents: number | null) {
+  const res = await request.post('/api/test/set-entry-fee', { data: { weekId, cents } });
+  expect(res.ok(), 'set entry fee').toBeTruthy();
+}
+
 /** UI-driven sign up. Ends on /picks. */
 export async function signUpViaUi(page: Page, firstName: string, username: string, pin: string) {
   await page.goto('/login');

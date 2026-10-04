@@ -199,3 +199,39 @@ test('final recap: tied players are co-winners', async ({ page, context, request
   await expect(rows.nth(2)).toContainText('3rd');
   await expectNoPlayerCountOf(page);
 });
+
+test('live leaderboard: OUT marks entries that can no longer finish 1st', async ({ page, context, request }) => {
+  const { gameIds } = await seedPlayers(request);
+  // g0-g2 home => Ann 3, Bob 2, Cy 0. g3 (Monday) pending: Bob picked away, so if it goes away he ties Ann on
+  // 3 (tiebreaker still open) => alive. Cy's best case is 1 => OUT. Di is unpaid: never ranked, never OUT.
+  for (const i of [0, 1, 2]) await setResult(request, gameIds[i], 'home');
+  await setNow(context, FRI);
+  await loginAs(page, 'cyrus');
+  await page.goto('/leaderboard');
+
+  const row = (name: string) => page.locator('[data-testid^="rank-row-"]').filter({ hasText: name });
+  await expect(row('Cy').getByTestId('out-badge')).toHaveText('OUT');
+  await expect(row('Cy')).toHaveAttribute('aria-label', /eliminated/);
+  await expect(row('Ann').getByTestId('out-badge')).toHaveCount(0);
+  await expect(row('Bob').getByTestId('out-badge')).toHaveCount(0);
+  await expect(page.getByTestId('out-footnote')).toContainText("can't finish 1st");
+  await expectNoPlayerCountOf(page);
+
+  // Once every game is final the winner is known: the recap shows no OUT tags.
+  await setResult(request, gameIds[3], 'away', { homeScore: 17, awayScore: 24 });
+  await page.reload();
+  await expect(page.getByTestId('winner-banner')).toBeVisible();
+  await expect(page.getByTestId('out-badge')).toHaveCount(0);
+  await expect(page.getByTestId('out-footnote')).toHaveCount(0);
+});
+
+test('live leaderboard: no OUT tags while everyone can still win', async ({ page, context, request }) => {
+  const { gameIds } = await seedPlayers(request);
+  await setResult(request, gameIds[0], 'home');
+  await setNow(context, FRI);
+  await loginAs(page, 'annie');
+  await page.goto('/leaderboard');
+  await expect(page.locator('[data-testid^="rank-row-"]')).toHaveCount(3);
+  await expect(page.getByTestId('out-badge')).toHaveCount(0);
+  await expect(page.getByTestId('out-footnote')).toHaveCount(0);
+});

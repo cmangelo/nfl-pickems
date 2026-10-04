@@ -11,13 +11,17 @@ export function RankedTable({
   weekId,
   viewerId,
   showDiff,
+  eliminated = [],
 }: {
   ranked: RankedEntry[];
   weekId: number;
   viewerId: number;
   /** Tiebreaker game is final: show the (±diff) next to each guess. */
   showDiff: boolean;
+  /** Entries that can no longer finish 1st (live board only): tagged "OUT". */
+  eliminated?: number[];
 }) {
+  const out = new Set(eliminated);
   if (ranked.length === 0) {
     return (
       <p data-testid="no-ranked" className="rounded-xl border border-border bg-surface p-4 text-center text-muted">
@@ -39,7 +43,7 @@ export function RankedTable({
             <Link
               href={href(e, weekId)}
               data-testid={`rank-row-${e.entryId}`}
-              aria-label={`${e.name}, ${rankLabel(e.rank, e.tied)}, ${e.correct} correct. View picks`}
+              aria-label={`${e.name}, ${rankLabel(e.rank, e.tied)}, ${e.correct} correct${out.has(e.entryId) ? ', eliminated' : ''}. View picks`}
               className={`grid grid-cols-[3.5rem_1fr_auto_3rem] items-center gap-2 px-3 py-3 ${
                 e.userId === viewerId ? 'bg-accent/10' : ''
               }`}
@@ -49,6 +53,11 @@ export function RankedTable({
                 <span data-testid="player-name" className="truncate font-semibold">{e.name}</span>
                 {e.userId === viewerId && (
                   <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-on-accent">YOU</span>
+                )}
+                {out.has(e.entryId) && (
+                  <span data-testid="out-badge" className="rounded border border-border px-1.5 py-0.5 text-[10px] font-bold text-muted">
+                    OUT
+                  </span>
                 )}
               </span>
               <span data-testid="tb-guess" className="text-right text-sm text-muted">

@@ -163,8 +163,42 @@ export interface WeekSummary {
   /** Pick counts per game over counted (paid) entries only; a player's second entry counts again. */
   splits: Record<number, GameSplit>;
   upset: Upset | null;
+  /** Counted entries that can no longer finish 1st (alone or tied), however the pending games go. Empty once final. */
+  eliminated: number[];
   tiebreakerGameId: number | null;
   tiebreakerActualTotal: number | null;
+}
+
+/**
+ * Counted (paid) entries that can no longer win or share 1st. For each entry, its best case is every pending
+ * game going its way: that outcome maximises its lead over every rival at once (a rival on the same side gains
+ * the same point; a tie or void helps nobody). The entry is out if some rival still finishes ahead in that best
+ * case: more correct, or level on correct with a strictly closer tiebreaker guess (only once the tiebreaker game
+ * is final; before that any total is still possible, so a level rival never knocks it out). Empty once the week
+ * is final (the winners are known) or while fewer than two entries count.
+ */
+export function eliminatedEntryIds(games: ScoringGame[], entries: ScoringEntry[], tiebreakerGameId?: number | null): number[] {
+  const counted = entries.filter((e) => e.paid);
+  const pending = games.filter((g) => !isVoid(g) && !isSettled(g));
+  if (counted.length < 2 || pending.length === 0) return [];
+  const scored = new Map(counted.map((e) => [e.entryId, scoreEntry(games, e, tiebreakerGameId)]));
+  const out: number[] = [];
+  for (const e of counted) {
+    const me = scored.get(e.entryId)!;
+    // Rival's total if every pending game goes e's way: they gain only where they picked the same side.
+    const bestCaseFor = (o: ScoringEntry) =>
+      scored.get(o.entryId)!.correct + pending.filter((g) => e.picks[g.id] !== undefined && o.picks[g.id] === e.picks[g.id]).length;
+    const mine = bestCaseFor(e);
+    const beaten = counted.some((o) => {
+      if (o.entryId === e.entryId) return false;
+      const theirs = bestCaseFor(o);
+      if (theirs !== mine) return theirs > mine;
+      const them = scored.get(o.entryId)!;
+      return me.tiebreakerDiff !== null && them.tiebreakerDiff !== null && them.tiebreakerDiff < me.tiebreakerDiff;
+    });
+    if (beaten) out.push(e.entryId);
+  }
+  return out;
 }
 
 export function weekSummary(
@@ -243,6 +277,7 @@ export function weekSummary(
     winners: isFinal ? ranked.filter((e) => e.rank === 1) : [],
     stats,
     splits,
+    eliminated: isFinal ? [] : eliminatedEntryIds(games, entries, tiebreakerGameId),
     upset: upset ? { gameId: upset.gameId, wrongCount: upset.wrongCount, totalCount: upset.totalCount, correctCount: upset.correctCount, correctNames: upset.correctNames } : null,
     tiebreakerGameId: tb?.id ?? null,
     tiebreakerActualTotal: actualTiebreakerTotal(games, tiebreakerGameId),

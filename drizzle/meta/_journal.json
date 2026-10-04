@@ -29,6 +29,13 @@
       "when": 1790995813540,
       "tag": "0003_deep_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791084884986,
+      "tag": "0004_tidy_hitman",
+      "breakpoints": true
     }
   ]
 }
