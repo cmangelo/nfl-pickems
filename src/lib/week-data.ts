@@ -1,4 +1,7 @@
+import { getDb } from '@/db';
+import { weeks } from '@/db/schema';
 import { listEntries } from './picks';
+import { effectiveEntryFee, type EffectiveFee } from './pot';
 import { weekSummary, type ScoringGame, type WeekSummary } from './scoring';
 import { resolveTiebreakerGame, type WeekRow } from './weeks';
 
@@ -11,4 +14,11 @@ export async function loadWeekSummary<G extends ScoringGame>(week: WeekRow, game
     entries.map((e) => ({ entryId: e.entryId, userId: e.userId, name: e.label, paid: e.paid, tiebreaker: e.tiebreaker, picks: e.picks })),
     { tiebreakerGameId: tb?.id ?? null },
   );
+}
+
+/** The entry fee in effect for `week` (its own, or carried over from the latest earlier week with one). */
+export async function loadEntryFee(week: Pick<WeekRow, 'season' | 'weekNumber'>): Promise<EffectiveFee | null> {
+  const db = await getDb();
+  const rows = await db.select({ season: weeks.season, weekNumber: weeks.weekNumber, entryFeeCents: weeks.entryFeeCents }).from(weeks);
+  return effectiveEntryFee(rows, week);
 }

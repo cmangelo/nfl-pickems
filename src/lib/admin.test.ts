@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { entries, games, picks, sessions, users } from '@/db/schema';
-import { fromPtInputValue, listUsers, removeUser, resetPin, setAdmin, setPaid, toPtInputValue } from './admin';
+import { fromPtInputValue, listUsers, removeUser, resetPin, setAdmin, setEntryFee, setPaid, toPtInputValue } from './admin';
 import { createSession } from './auth';
 import { verifyPin } from './pin';
+import { loadEntryFee } from './week-data';
 import { freshDb, makeEntry, makeUser, makeWeek } from './testing/helpers';
 
 process.env.DB_DRIVER = 'memory';
@@ -50,6 +51,23 @@ describe('admin user/payment logic', () => {
     await setPaid(e1.id, true);
     await setPaid(e2.id, false);
     expect(await paidOf()).toEqual({ [e1.id]: true, [e2.id]: false });
+  });
+
+  it('setEntryFee sets, carries over to later weeks, clears, and refuses bad amounts', async () => {
+    const later = (await makeWeek({ weekNumber: 6, unlockAt: d('2026-10-13T07:00:00Z'), lockAt: d('2026-10-15T19:00:00Z') })).week;
+    const wk5 = { season: 2026, weekNumber: 5 };
+    expect(await loadEntryFee(wk5)).toBeNull();
+    expect(await setEntryFee(weekId, 1000)).toBe(true);
+    expect(await loadEntryFee(wk5)).toEqual({ cents: 1000, season: 2026, weekNumber: 5 });
+    expect(await loadEntryFee(later)).toEqual({ cents: 1000, season: 2026, weekNumber: 5 });
+    expect(await setEntryFee(later.id, 2000)).toBe(true);
+    expect(await loadEntryFee(later)).toMatchObject({ cents: 2000, weekNumber: 6 });
+    expect(await loadEntryFee(wk5)).toMatchObject({ cents: 1000 });
+    expect(await setEntryFee(later.id, null)).toBe(true);
+    expect(await loadEntryFee(later)).toMatchObject({ cents: 1000, weekNumber: 5 });
+    for (const bad of [-1, 1.5, 1_000_001]) expect(await setEntryFee(weekId, bad)).toBe(false);
+    expect(await setEntryFee(9999, 1000)).toBe(false);
+    expect(await loadEntryFee(wk5)).toMatchObject({ cents: 1000 });
   });
 
   it('resetPin validates, sets the hash and clears lockout', async () => {

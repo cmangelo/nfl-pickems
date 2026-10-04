@@ -45,7 +45,14 @@ describe('admin actions reject malformed ids with a validation error (no DB erro
       expect(await a.resetPinAction(b, '1234'), 'resetPin').toEqual(INVALID);
       expect(await a.setAdminAction(b, true), 'setAdmin').toEqual(INVALID);
       expect(await a.removeUserAction(b), 'removeUser').toEqual(INVALID);
+      expect(await a.setEntryFeeAction(b, '10'), 'setEntryFee').toEqual(INVALID);
     }
+  });
+
+  it('setEntryFee rejects a non-string or oversized value and reports a bad amount', async () => {
+    for (const v of [10, null, undefined, {}, 'x'.repeat(21)]) expect(await a.setEntryFeeAction(1, v as string)).toEqual(INVALID);
+    expect(await a.setEntryFeeAction(1, 'ten')).toEqual({ ok: false, error: 'Enter an amount like 10 or 12.50.' });
+    expect(await a.setEntryFeeAction(999, '10')).toEqual({ ok: false, error: 'Week not found.' });
   });
 
   it('a well-formed id for a missing row is a normal error, not a throw', async () => {

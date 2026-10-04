@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  eliminatedEntryIds,
   rankEntries,
   scoreEntry,
   tiebreakerGame,
@@ -288,5 +289,77 @@ describe('entry labels sort numerically within a tie', () => {
     expect(rankEntries(gs, es).map((e) => e.name)).toEqual(['Ann (2)', 'Ann (10)']);
     const unpaid = es.map((e) => ({ ...e, paid: false }));
     expect(weekSummary(gs, unpaid).notCounted.map((e) => e.name)).toEqual(['Ann (2)', 'Ann (10)']);
+  });
+});
+
+describe('eliminatedEntryIds', () => {
+  const H = 'home' as const;
+  const A = 'away' as const;
+  // Games 1-2 final (home won both), 3-4 pending; 4 is the Monday tiebreaker game.
+  const live = [fin(1, THU, 20, 10), fin(2, SUN, 24, 17), game(3, SUN), game(4, MON)];
+
+  it('out when even winning every pending pick cannot catch the leader', () => {
+    const es = [
+      entry(1, 'Ann', { 1: H, 2: H, 3: H, 4: H }), // 2 correct
+      entry(2, 'Bob', { 1: A, 2: A, 3: A, 4: A }), // 0; best case (A, A): Bob 2, Ann 2 => level, tiebreaker open => alive
+      entry(3, 'Cy', { 1: A, 2: A, 3: H, 4: H }), // 0; best case (H, H): Cy 2, but Ann gains both too => 4 => out
+    ];
+    expect(eliminatedEntryIds(live, es)).toEqual([3]);
+  });
+
+  it('a rival who agrees on a pending game gains the same point', () => {
+    const es = [
+      entry(1, 'Ann', { 1: H, 2: H, 3: H, 4: A }), // 2
+      entry(2, 'Bob', { 1: H, 2: A, 3: H, 4: H }), // 1; best case: Bob 3, Ann 3 => alive
+    ];
+    expect(eliminatedEntryIds(live, es)).toEqual([]);
+  });
+
+  it('level on correct: out only once the tiebreaker game is final and a rival guessed closer', () => {
+    // Tiebreaker (game 4) final at 41 total; game 3 still pending.
+    const g = [fin(1, THU, 20, 10), fin(2, SUN, 24, 17), game(3, SUN), fin(4, MON, 21, 20)];
+    const es = [
+      entry(1, 'Ann', { 1: H, 2: H, 3: H, 4: H }, 41), // 3 correct, diff 0
+      entry(2, 'Bob', { 1: H, 2: H, 3: A, 4: A }, 50), // 2 correct; best case 3 = Ann's 3, diff 9 > 0 => out
+      entry(3, 'Cy', { 1: H, 2: H, 3: A, 4: A }, 41), // 2; best case 3, same diff 0 => co-winner possible
+    ];
+    expect(eliminatedEntryIds(g, es)).toEqual([2]);
+    // Before the tiebreaker game is final the same picks keep Bob alive.
+    expect(eliminatedEntryIds(live, es)).toEqual([]);
+  });
+
+  it('only paid entries count, both as candidates and as rivals', () => {
+    const es = [
+      entry(1, 'Ann', { 1: H, 2: H, 3: H, 4: H }, 40, false), // unpaid leader
+      entry(2, 'Cy', { 1: A, 2: A, 3: H, 4: H }),
+      entry(3, 'Di', { 1: A, 2: A, 3: H, 4: H }),
+    ];
+    expect(eliminatedEntryIds(live, es)).toEqual([]);
+  });
+
+  it('void games help nobody; postponed games are still pending', () => {
+    const g = [fin(1, THU, 20, 10), game(2, SUN, { status: 'void' }), game(3, SUN, { status: 'postponed' })];
+    const es = [entry(1, 'Ann', { 1: H, 2: H, 3: H }), entry(2, 'Bob', { 1: A, 2: H, 3: A })];
+    // Bob: 0 correct, best case 1 (game 3) = Ann's 1 => alive.
+    expect(eliminatedEntryIds(g, es)).toEqual([]);
+    const g2 = [fin(1, THU, 20, 10), game(2, SUN, { status: 'void' }), fin(3, SUN, 20, 10), game(4, MON)];
+    const es2 = [entry(1, 'Ann', { 1: H, 2: H, 3: H, 4: H }), entry(2, 'Bob', { 1: A, 2: A, 3: A, 4: A })];
+    expect(eliminatedEntryIds(g2, es2)).toEqual([2]);
+  });
+
+  it('nobody is out once the week is final, with no pending games, or with fewer than two counted entries', () => {
+    const done = [fin(1, THU, 20, 10), fin(2, MON, 20, 10)];
+    const es = [entry(1, 'Ann', { 1: H, 2: H }), entry(2, 'Bob', { 1: A, 2: A })];
+    expect(eliminatedEntryIds(done, es)).toEqual([]);
+    expect(weekSummary(done, es).eliminated).toEqual([]);
+    expect(eliminatedEntryIds(live, [entry(1, 'Ann', { 1: A, 2: A, 3: A, 4: A })])).toEqual([]);
+  });
+
+  it('weekSummary reports it while the week is live; each entry of one player stands alone', () => {
+    const es = [
+      entry(1, 'Ann (1)', { 1: H, 2: H, 3: H, 4: H }, 40, true, 11),
+      entry(1, 'Ann (2)', { 1: A, 2: A, 3: H, 4: H }, 40, true, 12),
+    ];
+    expect(weekSummary(live, es).eliminated).toEqual([12]);
   });
 });

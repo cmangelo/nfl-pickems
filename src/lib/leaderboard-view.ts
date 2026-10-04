@@ -1,4 +1,5 @@
-import type { Upset } from './scoring';
+import type { ScoringGame, Side, Upset } from './scoring';
+import { ptDayOfWeek } from './time';
 
 /** Pure view helpers for the Leaderboard / Games views (no DB, no clock reads). Never "X of N players". */
 
@@ -21,6 +22,11 @@ export function formatUpdatedAgo(last: Date | null, at: Date): string {
   if (hr < 24) return `Updated ${hr} hr ago`;
   const d = Math.floor(hr / 24);
   return `Updated ${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+/** Short label for the tiebreaker guess: "MNF" when the tiebreaker game is on Monday (PT), else "TB". */
+export function tiebreakerShortLabel(game: Pick<ScoringGame, 'kickoffAt'> | null | undefined): 'MNF' | 'TB' {
+  return game && ptDayOfWeek(game.kickoffAt) === 1 ? 'MNF' : 'TB';
 }
 
 /** "(±3)" once the tiebreaker game is final, else "". */
@@ -81,4 +87,47 @@ export function winnerBanner(
     names: joinNames(winners.map((w) => w.name)),
     detail: `${correct} · tied, co-winners`,
   };
+}
+
+export type PickResult = 'right' | 'wrong' | 'tie' | 'pending' | 'void' | 'none';
+
+/** One mark per game in kickoff order for a compact pick strip: right / wrong / tie (no point) / pending / void. */
+export function pickResults(
+  games: Pick<ScoringGame, 'id' | 'kickoffAt' | 'status' | 'winner'>[],
+  picks: Record<number, Side>,
+): { gameId: number; result: PickResult }[] {
+  return [...games]
+    .sort((a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime() || a.id - b.id)
+    .map((g) => {
+      const p = picks[g.id];
+      let result: PickResult;
+      if (g.status === 'void') result = 'void';
+      else if (!p) result = 'none';
+      else if (g.status !== 'final' || g.winner === null) result = 'pending';
+      else if (g.winner === 'tie') result = 'tie';
+      else result = p === g.winner ? 'right' : 'wrong';
+      return { gameId: g.id, result };
+    });
+}
+
+/** Avatar circle colors (fill, text) that read on the dark card; stable per user. */
+const AVATARS: [string, string][] = [
+  ['#1f4d3a', '#7ee2b0'],
+  ['#2a3f6b', '#9cbcff'],
+  ['#5a2d4f', '#f5a3d9'],
+  ['#5c3b1e', '#ffc58a'],
+  ['#3d2f6b', '#c4b2ff'],
+  ['#21505a', '#86dff0'],
+  ['#5a2a2a', '#ffaaa0'],
+  ['#4a4a1e', '#e8e27a'],
+];
+
+export function avatarColors(userId: number): { bg: string; fg: string } {
+  const [bg, fg] = AVATARS[((userId % AVATARS.length) + AVATARS.length) % AVATARS.length];
+  return { bg, fg };
+}
+
+/** First letter for the avatar ("Ann (2)" => "A"). */
+export function initial(name: string): string {
+  return (name.trim()[0] ?? '?').toUpperCase();
 }

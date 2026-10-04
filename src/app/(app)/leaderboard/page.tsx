@@ -1,15 +1,19 @@
 import NoWeeks from '@/components/NoWeeks';
+import PotCard from '@/components/PotCard';
 import RevealedCard from '@/components/RevealedCard';
 import { requireUser } from '@/lib/auth';
-import { formatUpdatedAgo, joinNames, upsetHeadline, upsetRightText, upsetWrongText, winnerBanner } from '@/lib/leaderboard-view';
+import { formatUpdatedAgo, tiebreakerShortLabel } from '@/lib/leaderboard-view';
 import { listEntries } from '@/lib/picks';
+import { computePot } from '@/lib/pot';
+import { weekReport } from '@/lib/report';
 import { getSelectedWeek } from '@/lib/selected-week';
 import { getLastSyncedAt, refreshWithBudget } from '@/lib/sync';
 import { formatPT, now as getNow } from '@/lib/time';
 import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
-import { loadWeekSummary } from '@/lib/week-data';
+import { loadEntryFee, loadWeekSummary } from '@/lib/week-data';
 import { NotCounted, RankedTable } from './RankedTable';
 import RefreshButton from './RefreshButton';
+import WeeklyReport from './WeeklyReport';
 
 export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ week?: string | string[] }> }) {
   const user = await requireUser();
@@ -29,11 +33,14 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       </>
     );
 
+  const fee = await loadEntryFee(week);
   if (state === 'open') {
     const entries = await listEntries(week.id);
+    const openPot = computePot(fee?.cents, entries.filter((e) => e.paid).length);
     return (
       <div className="flex flex-col gap-4">
         <h1 className="sr-only">Leaderboard</h1>
+        {openPot && <PotCard pot={openPot} open />}
         <RevealedCard
           lockShort={formatPT(effectiveLock(week), "EEE h:mm a 'PT'")}
           names={entries.filter((e) => e.entryIndex === 0).map((e) => ({ userId: e.userId, firstName: e.firstName, entries: e.entryCount }))}
@@ -47,8 +54,10 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const summary = await loadWeekSummary(week, games, t);
   const tb = await resolveTiebreakerGame(week, games, t);
   const tbName = tb ? `${tb.awayTeam} @ ${tb.homeTeam}` : 'the tiebreaker game';
+  const tbLabel = tiebreakerShortLabel(tb);
   const tbFinal = summary.tiebreakerActualTotal !== null;
   const gamesText = `${summary.gamesFinal} of ${summary.gamesTotal} games final`;
+  const pot = computePot(fee?.cents, summary.ranked.length);
 
   if (state === 'locked') {
     const last = await getLastSyncedAt();
@@ -61,66 +70,42 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           </p>
           <RefreshButton />
         </div>
-        <RankedTable ranked={summary.ranked} weekId={week.id} viewerId={user.id} showDiff={tbFinal} />
+        {pot && <PotCard pot={pot} />}
+        <RankedTable
+          ranked={summary.ranked}
+          games={games}
+          weekId={week.id}
+          viewerId={user.id}
+          showDiff={tbFinal}
+          live
+          eliminated={summary.eliminated}
+          tbLabel={tbLabel}
+        />
         <p data-testid="tb-footnote" className="text-xs text-muted">
           Players with the same number correct share a rank. The tiebreaker (closest guess to the total points in {tbName})
           only applies once that game is final.
         </p>
+        {summary.eliminated.length > 0 && (
+          <p data-testid="out-footnote" className="text-xs text-muted">
+            OUT: that entry can&apos;t finish 1st (or tie for it), even if every one of its remaining picks is right.
+          </p>
+        )}
         <NotCounted entries={summary.notCounted} weekId={week.id} />
       </div>
     );
   }
 
-  // Final recap
-  const banner = winnerBanner(week.weekNumber, summary.winners, summary.gamesTotal);
-  const stats = summary.stats;
-  const upset = summary.upset;
-  const upsetGame = upset ? games.find((g) => g.id === upset.gameId) : undefined;
-  const upsetHead = upsetGame ? upsetHeadline(upsetGame) : null;
-  const upsetRight = upset ? upsetRightText(upset) : null;
-  const tile = (id: string, label: string, value: string, sub?: string) => (
-    <div data-testid={id} className="rounded-xl border border-border bg-surface px-3 py-2">
-      <div className="text-xs text-muted">{label}</div>
-      <div className="text-2xl font-bold leading-tight">{value}</div>
-      {sub && <div className="truncate text-xs text-muted">{sub}</div>}
-    </div>
+  // Final recap: the weekly report, then the full standings.
+  const entries = await listEntries(week.id);
+  const report = weekReport(
+    games,
+    entries.map((e) => ({ entryId: e.entryId, userId: e.userId, name: e.label, paid: e.paid, tiebreaker: e.tiebreaker, picks: e.picks })),
+    summary,
   );
-
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="sr-only">Leaderboard</h1>
-      <p data-testid="final-status" className="text-sm text-muted">Final · {gamesText}</p>
-      {banner ? (
-        <div data-testid="winner-banner" className="rounded-xl border border-accent bg-accent/10 p-4 text-center">
-          <div data-testid="winner-title" className="text-xs font-semibold uppercase tracking-wide text-accent-bright">{banner.title}</div>
-          <div data-testid="winner-names" className="mt-1 text-3xl font-bold">{banner.names}</div>
-          <div data-testid="winner-detail" className="mt-1 text-sm text-muted">{banner.detail}</div>
-        </div>
-      ) : (
-        <p data-testid="no-winner" className="rounded-xl border border-border bg-surface p-4 text-center text-muted">
-          No counted entries this week, so there is no winner yet.
-        </p>
-      )}
-
-      {stats && (
-        <div data-testid="stats" className="grid grid-cols-2 gap-2">
-          {tile('stat-average', 'Average', `${stats.average} correct`)}
-          {tile('stat-entries', 'Entries counted', String(stats.countedEntries))}
-          {tile('stat-most', 'Most', `${stats.mostCorrect.correct} correct`, joinNames(stats.mostCorrect.names))}
-          {tile('stat-fewest', 'Fewest', `${stats.fewestCorrect.correct} correct`, joinNames(stats.fewestCorrect.names))}
-        </div>
-      )}
-
-      {upset && upsetHead && (
-        <div data-testid="upset" className="rounded-xl border border-border bg-surface p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-accent-bright">Upset of the week</div>
-          <div data-testid="upset-headline" className="mt-1 text-lg font-bold">{upsetHead}</div>
-          <div data-testid="upset-wrong" className="text-sm text-muted">{upsetWrongText(upset)}</div>
-          {upsetRight && <div data-testid="upset-right" className="text-sm text-muted">{upsetRight}</div>}
-        </div>
-      )}
-
-      <RankedTable ranked={summary.ranked} weekId={week.id} viewerId={user.id} showDiff={tbFinal} />
+      <WeeklyReport weekNumber={week.weekNumber} summary={summary} report={report} games={games} pot={pot} gamesText={gamesText} />
+      <RankedTable ranked={summary.ranked} games={games} weekId={week.id} viewerId={user.id} showDiff={tbFinal} tbLabel={tbLabel} />
       {tbFinal && (
         <p data-testid="mnf-total" className="text-xs text-muted">
           {tbName} finished with {summary.tiebreakerActualTotal} total points. The number in parentheses is each guess&apos;s distance from it.

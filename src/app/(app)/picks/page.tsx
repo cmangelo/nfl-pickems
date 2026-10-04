@@ -3,6 +3,7 @@ import NoWeeks from '@/components/NoWeeks';
 import { requireUser } from '@/lib/auth';
 import { selectEntry } from '@/lib/entry-select';
 import { getEntries } from '@/lib/picks';
+import { draftKey } from '@/lib/picks-draft';
 import { getSelectedWeek } from '@/lib/selected-week';
 import { formatPT, now as getNow } from '@/lib/time';
 import { refreshWithBudget } from '@/lib/sync';
@@ -87,6 +88,14 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
           // Creating an entry (the first one or another) navigates to it, remounting the form on it.
           savedHrefBase={isNew || !entry ? `${base}&saved=1&entry=` : undefined}
           initialSaved={!isNew && sp.saved === '1'}
+          draft={{
+            userId: user.id,
+            key: draftKey(
+              user.id,
+              week.id,
+              isNew ? { newEntry: true, copyOf: copyFrom?.entryId } : entry ? { entryId: entry.entryId } : { first: true },
+            ),
+          }}
           savedMessage={
             isNew || mine.length > 1
               ? `${isNew ? 'New entry' : entryName(index)} saved. You can change it until ${formatPT(lock, "EEE h:mm a 'PT'")}.`

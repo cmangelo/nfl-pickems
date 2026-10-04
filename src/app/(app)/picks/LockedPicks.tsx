@@ -68,12 +68,6 @@ export default function LockedPicks({
         {chip(scored.wrong, 'Wrong', 'chip-wrong')}
         {chip(scored.pending, 'To play', 'chip-pending')}
       </div>
-      <p className="text-sm text-muted">Picks locked {lockShort} · {other ? 'their' : 'your'} pick is highlighted</p>
-      {editedLabel && (
-        <p data-testid="admin-edited" className="text-sm text-muted">
-          {editedLabel}
-        </p>
-      )}
 
       {games.map((g) => {
         const pick = entry.picks[g.id];
@@ -127,6 +121,11 @@ export default function LockedPicks({
       <div data-testid="tiebreaker-guess" className="flex items-center justify-between rounded-xl border border-border bg-surface px-3 py-3">
         <span className="text-sm text-muted">{tiebreakerLabel}</span>
         <span className="text-2xl font-bold">{entry.tiebreaker}</span>
+      </div>
+
+      <div data-testid="locked-info" className="flex flex-col gap-1 text-sm text-muted">
+        <p>Picks locked {lockShort} · {other ? 'their' : 'your'} pick is highlighted</p>
+        {editedLabel && <p data-testid="admin-edited">{editedLabel}</p>}
       </div>
     </div>
   );

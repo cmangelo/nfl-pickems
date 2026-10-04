@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { computePot, potLine } from '@/lib/pot';
 import { setPaidAction } from '../actions';
 
 export interface PaymentEntry {
@@ -21,7 +22,16 @@ export interface PaymentEntry {
 }
 
 /** One row per player; a player with several entries gets one paid switch per entry (each is a separate fee). */
-export default function PaymentsList({ weekId, entries }: { weekId: number; entries: PaymentEntry[] }) {
+export default function PaymentsList({
+  weekId,
+  entries,
+  feeCents = null,
+}: {
+  weekId: number;
+  entries: PaymentEntry[];
+  /** Entry fee in effect for the week (null = none): shows the pot from the paid switches as they change. */
+  feeCents?: number | null;
+}) {
   const [paid, setPaid] = useState<Record<number, boolean>>(() => Object.fromEntries(entries.map((e) => [e.entryId, e.paid])));
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +50,7 @@ export default function PaymentsList({ weekId, entries }: { weekId: number; entr
 
   const nPaid = entries.filter((e) => paid[e.entryId]).length;
   const nUnpaid = entries.length - nPaid;
+  const pot = computePot(feeCents, nPaid);
   const players: PaymentEntry[][] = [];
   for (const e of entries) {
     const last = players[players.length - 1];
@@ -86,6 +97,11 @@ export default function PaymentsList({ weekId, entries }: { weekId: number; entr
       <p data-testid="paid-summary" className="text-lg font-bold">
         {nPaid} paid · {nUnpaid} unpaid
       </p>
+      {pot && (
+        <p data-testid="admin-pot" className="text-sm font-semibold text-accent-bright">
+          {potLine(pot)}
+        </p>
+      )}
       <p className="text-sm text-muted">
         Everyone starts unpaid. Only paid entries count in this week&apos;s results. Change anytime, even after the week ends.
         A player with more than one entry pays for each one.
