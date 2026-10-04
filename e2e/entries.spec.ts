@@ -263,6 +263,7 @@ test('@smoke locked week: each entry is ranked, shown, split and listed on its o
   await expect(page.getByTestId('chip-correct')).toContainText('2');
   await page.getByTestId('entry-tab-2').click();
   await expect(page.getByTestId('chip-correct')).toContainText('0');
+  await expect(page.getByTestId('chip-correct-count')).not.toHaveClass(/text-correct/); // zero stays neutral
   await expect(page.getByTestId('add-entry')).toHaveCount(0); // no new entries once locked
 
   // Games: splits count paid entries; "Your pick ×N" shows how many of my entries took each side.

@@ -54,9 +54,11 @@ export default function LockedPicks({
   }
   const scored = scoreEntry(games, { entryId: entry.entryId, userId: entry.userId, name: userName, paid: entry.paid, tiebreaker: entry.tiebreaker, picks: entry.picks });
   const editedLabel = adminEditLabel(entry.editedByName, entry.adminEditedAt);
-  const chip = (n: number, label: string, id: string) => (
+  const chip = (n: number, label: string, id: string, tone = '') => (
     <div data-testid={id} className="flex-1 rounded-xl border border-border bg-surface px-3 py-2">
-      <div className="text-3xl font-bold leading-none">{n}</div>
+      <div data-testid={`${id}-count`} className={`text-3xl font-bold leading-none ${n > 0 ? tone : ''}`}>
+        {n}
+      </div>
       <div className="text-xs text-muted">{label}</div>
     </div>
   );
@@ -64,9 +66,15 @@ export default function LockedPicks({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
-        {chip(scored.correct, 'Correct', 'chip-correct')}
-        {chip(scored.wrong, 'Wrong', 'chip-wrong')}
+        {chip(scored.correct, 'Correct', 'chip-correct', 'text-correct')}
+        {chip(scored.wrong, 'Wrong', 'chip-wrong', 'text-wrong')}
         {chip(scored.pending, 'To play', 'chip-pending')}
+      </div>
+
+      <div data-testid="picks-divider" role="separator" className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-muted">
+        <span aria-hidden="true" className="h-px flex-1 bg-border" />
+        {other ? 'Picks' : 'Your picks'}
+        <span aria-hidden="true" className="h-px flex-1 bg-border" />
       </div>
 
       {games.map((g) => {
