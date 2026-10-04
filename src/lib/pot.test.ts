@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computePot, effectiveEntryFee, feeInputValue, formatMoney, openPotLine, parseFeeInput, payoutLine, potLine } from './pot';
+import { computePot, effectiveEntryFee, feeInputValue, formatMoney, parseFeeInput, payoutLine, potDetail, potLine } from './pot';
 
 const w = (season: number, weekNumber: number, entryFeeCents: number | null) => ({ season, weekNumber, entryFeeCents });
 
@@ -65,9 +65,9 @@ describe('pot copy', () => {
     expect(potLine(computePot(1000, 1)!)).toBe('Pot $10 · 1 paid entry at $10');
     expect(potLine(computePot(1000, 0)!)).toBe('Pot $0 · 0 paid entries at $10');
   });
-  it('open-week line says the pot is still filling', () => {
-    expect(openPotLine(computePot(1000, 4)!)).toBe('$10 entry · $40 in the pot so far');
-    expect(openPotLine(computePot(750, 0)!)).toBe('$7.50 entry · $0 in the pot so far');
+  it('pot card detail', () => {
+    expect(potDetail(computePot(1000, 18)!)).toBe('18 paid entries × $10');
+    expect(potDetail(computePot(750, 1)!)).toBe('1 paid entry × $7.50');
   });
   it('payout: one winner takes it, co-winners split (rounded down to the cent)', () => {
     expect(payoutLine(computePot(1000, 18), 1)).toBe('Wins the $180 pot');

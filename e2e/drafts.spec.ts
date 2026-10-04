@@ -15,65 +15,85 @@ async function waitForDraft(page: Page, present = true) {
   );
 }
 
-test('@smoke unfinished picks are offered back after leaving, and only applied on Restore', async ({ page, context, request }) => {
+test('@smoke unfinished picks come back automatically after leaving; Clear picks wipes them', async ({ page, context, request }) => {
   const { gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 4, tuesday: WED });
   await createUser(request, 'Ann', 'annie');
   await setNow(context, WED);
   await loginAs(page, 'annie');
   await page.goto('/picks');
+  await expect(page.getByTestId('reset-picks')).toHaveCount(0);
 
   await page.getByTestId(`pick-${gameIds[0]}-home`).click();
   await page.getByTestId(`pick-${gameIds[1]}-away`).click();
   await waitForDraft(page);
   await page.reload();
 
-  // Offered, not applied: the form still shows nothing picked.
-  const offer = page.getByTestId('draft-offer');
-  await expect(offer).toContainText('You have unsaved picks on this device');
-  await expect(offer).toContainText('2/4 picked');
-  await expect(page.getByTestId('progress')).toHaveText('0/4 picked');
-  await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'false');
-
-  await page.getByTestId('draft-restore').click();
-  await expect(offer).toHaveCount(0);
-  await expect(page.getByTestId('draft-restored')).toContainText("aren't saved until you submit");
+  // Filled back in automatically, clearly not submitted.
   await expect(page.getByTestId('progress')).toHaveText('2/4 picked');
+  await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId(`pick-${gameIds[1]}-away`)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('draft-restored')).toContainText("They aren't submitted yet.");
+
+  // Clear picks needs a second tap.
+  const reset = page.getByTestId('reset-picks');
+  await expect(reset).toHaveText('Clear picks');
+  await reset.click();
+  await expect(reset).toHaveText('Tap again to clear');
+  await expect(page.getByTestId('progress')).toHaveText('2/4 picked');
+  await reset.click();
+  await expect(page.getByTestId('progress')).toHaveText('0/4 picked');
+  await expect(page.getByTestId('reset-picks')).toHaveCount(0);
+  await expect(page.getByTestId('draft-restored')).toHaveCount(0);
+  await waitForDraft(page, false);
 
   // Finish and submit: the draft is gone and the saved picks load from the server.
-  await page.getByTestId(`pick-${gameIds[2]}-home`).click();
-  await page.getByTestId(`pick-${gameIds[3]}-home`).click();
+  for (const id of gameIds) await page.getByTestId(`pick-${id}-home`).click();
   await page.getByLabel(/Total points in/).fill('45');
   await page.getByRole('button', { name: 'Submit picks' }).click();
   await expect(page.getByText('Picks saved.')).toBeVisible();
-  await expect(page.getByTestId('draft-restored')).toHaveCount(0);
   await waitForDraft(page, false);
   await page.reload();
-  await expect(page.getByTestId('draft-offer')).toHaveCount(0);
+  await expect(page.getByTestId('draft-restored')).toHaveCount(0);
+  await expect(page.getByTestId('reset-picks')).toHaveCount(0);
   await expect(page.getByTestId('progress')).toHaveText('4/4 picked');
   await expect(page.getByLabel(/Total points in/)).toHaveValue('45');
 });
 
-test('a draft never replaces submitted picks unless restored; Discard drops it', async ({ page, context, request }) => {
+test('unsaved changes to submitted picks come back marked unsaved; Undo changes restores the submitted picks', async ({ page, context, request }) => {
   const { weekId, gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
   await createUser(request, 'Ann', 'annie');
   await submitPicksFor(request, 'annie', weekId, ['home', 'home'], 40);
   await setNow(context, WED);
   await loginAs(page, 'annie');
   await page.goto('/picks');
+  await expect(page.getByTestId('unsaved')).toHaveCount(0);
 
   await page.getByTestId(`pick-${gameIds[0]}-away`).click();
+  await expect(page.getByTestId('unsaved')).toBeVisible();
   await waitForDraft(page);
   await page.reload();
 
-  await expect(page.getByTestId('draft-offer')).toContainText('Your submitted picks stay as they are');
+  await expect(page.getByTestId(`pick-${gameIds[0]}-away`)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('unsaved')).toHaveText('· unsaved changes');
+  await expect(page.getByTestId('draft-restored')).toContainText('tap Update picks to keep them');
+  await page.getByTestId('reset-picks').click(); // "Undo changes": one tap, nothing is lost
   await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'true');
-  await page.getByTestId('draft-discard').click();
-  await expect(page.getByTestId('draft-offer')).toHaveCount(0);
-  await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('unsaved')).toHaveCount(0);
   await waitForDraft(page, false);
   await page.reload();
-  await expect(page.getByTestId('draft-offer')).toHaveCount(0);
+  await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('draft-restored')).toHaveCount(0);
+
+  // Restored changes are saved only by Update picks.
+  await page.getByTestId(`pick-${gameIds[1]}-away`).click();
+  await waitForDraft(page);
+  await page.reload();
+  await page.getByRole('button', { name: 'Update picks' }).click();
+  await expect(page.getByText('Picks saved.')).toBeVisible();
+  await expect(page.getByTestId('unsaved')).toHaveCount(0);
+  await waitForDraft(page, false);
+  await page.reload();
+  await expect(page.getByTestId(`pick-${gameIds[1]}-away`)).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('a draft is dropped once the entry was saved elsewhere (another device or an admin)', async ({ page, context, request }) => {
@@ -89,7 +109,7 @@ test('a draft is dropped once the entry was saved elsewhere (another device or a
   await submitPicksFor(request, 'annie', weekId, ['home', 'away'], 52); // saved on another device
   await page.reload();
 
-  await expect(page.getByTestId('draft-offer')).toHaveCount(0);
+  await expect(page.getByTestId('draft-restored')).toHaveCount(0);
   await expect(page.getByTestId(`pick-${gameIds[0]}-home`)).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId(`pick-${gameIds[1]}-away`)).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel(/Total points in/)).toHaveValue('52');
@@ -110,7 +130,7 @@ test('drafts are per player and never kept on the admin edit-picks page', async 
   await loginAs(page, 'bobby');
   await page.goto('/picks');
   await expect(page.getByTestId('progress')).toHaveText('0/2 picked');
-  await expect(page.getByTestId('draft-offer')).toHaveCount(0);
+  await expect(page.getByTestId('draft-restored')).toHaveCount(0);
 
   // Admin editing Ann's picks: no draft offered and none written.
   await page.evaluate(() => localStorage.clear());
@@ -119,6 +139,6 @@ test('drafts are per player and never kept on the admin edit-picks page', async 
   await expect(page.getByRole('heading', { name: /Edit picks: Ann/ })).toBeVisible();
   await page.getByTestId(`pick-${gameIds[1]}-home`).click();
   await page.reload();
-  await expect(page.getByTestId('draft-offer')).toHaveCount(0);
+  await expect(page.getByTestId(`pick-${gameIds[1]}-home`)).toHaveAttribute('aria-pressed', 'false');
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('pickems:draft:')))).toEqual([]);
 });

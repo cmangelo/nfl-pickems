@@ -87,11 +87,14 @@ test('players see the pot: filling while open, live, then the payout on the reca
 
   await setNow(context, WED);
   await page.goto('/leaderboard');
-  await expect(page.getByTestId('pot')).toHaveText('$10 entry · $20 in the pot so far');
+  await expect(page.getByTestId('pot')).toContainText('Pot so far');
+  await expect(page.getByTestId('pot-amount')).toHaveText('$20');
+  await expect(page.getByTestId('pot-detail')).toHaveText('2 paid entries × $10');
 
   await setNow(context, FRI);
   await page.goto('/leaderboard');
-  await expect(page.getByTestId('pot')).toHaveText('Pot $20 · 2 paid entries at $10');
+  await expect(page.getByTestId('pot-amount')).toHaveText('$20');
+  await expect(page.getByTestId('pot')).toContainText('Winner takes all');
   await expectNoPlayerCountOf(page);
 
   // Both games home, 21-23 => total 44: Ann (40) and Bob (48) both 2 correct, both 4 off => co-winners.
@@ -99,12 +102,14 @@ test('players see the pot: filling while open, live, then the payout on the reca
   await setResult(request, gameIds[1], 'home', { homeScore: 23, awayScore: 21 });
   await page.reload();
   await expect(page.getByTestId('winner-names')).toHaveText('Ann and Bob');
+  await expect(page.getByTestId('winner-prize')).toHaveText('$10each');
   await expect(page.getByTestId('winner-payout')).toHaveText('Split the $20 pot · $10 each');
 
   // Bob turns out unpaid: Ann wins outright, the pot shrinks.
   await setPaid(request, 'bobby', weekId, false);
   await page.reload();
   await expect(page.getByTestId('winner-names')).toHaveText('Ann');
+  await expect(page.getByTestId('winner-prize')).toHaveText('$10');
   await expect(page.getByTestId('winner-payout')).toHaveText('Wins the $10 pot');
   await expectNoPlayerCountOf(page);
 });

@@ -81,9 +81,10 @@ export function potLine(pot: Pot): string {
   return `Pot ${formatMoney(pot.totalCents)} · ${n} paid ${n === 1 ? 'entry' : 'entries'} at ${formatMoney(pot.feeCents)}`;
 }
 
-/** Open week (payments still coming in): "$10 entry · $40 in the pot so far". */
-export function openPotLine(pot: Pot): string {
-  return `${formatMoney(pot.feeCents)} entry · ${formatMoney(pot.totalCents)} in the pot so far`;
+/** Pot card detail: "18 paid entries × $10". */
+export function potDetail(pot: Pot): string {
+  const n = pot.paidEntries;
+  return `${n} paid ${n === 1 ? 'entry' : 'entries'} × ${formatMoney(pot.feeCents)}`;
 }
 
 /**

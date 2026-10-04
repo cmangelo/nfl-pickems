@@ -235,3 +235,53 @@ test('live leaderboard: no OUT tags while everyone can still win', async ({ page
   await expect(page.getByTestId('out-badge')).toHaveCount(0);
   await expect(page.getByTestId('out-footnote')).toHaveCount(0);
 });
+
+test('standings rows: avatar, tiebreaker, pick strip and MAX while live', async ({ page, context, request }) => {
+  const { gameIds } = await seedPlayers(request);
+  await setResult(request, gameIds[0], 'home');
+  await setResult(request, gameIds[1], 'away');
+  await setNow(context, FRI);
+  await loginAs(page, 'bobby');
+  await page.goto('/leaderboard');
+  // Bob (H, H, A, A): g0 right, g1 wrong, g2-g3 to play => 1 correct, max 3.
+  const bob = page.locator('[data-testid^="rank-row-"]').filter({ hasText: 'Bob' });
+  await expect(bob.getByTestId('correct-count')).toHaveText('1');
+  await expect(bob.getByTestId('max-count')).toHaveText('3');
+  await expect(bob).toContainText('TB 50 · 2 to play');
+  await expect(bob.getByTestId('pick-strip').locator('[data-result]')).toHaveCount(4);
+  const marks = await bob.getByTestId('pick-strip').locator('[data-result]').evaluateAll((els) => els.map((e) => e.getAttribute('data-result')));
+  expect(marks).toEqual(['right', 'wrong', 'pending', 'pending']);
+});
+
+test('@smoke weekly report: winner, podium, games of the week and awards', async ({ page, context, request }) => {
+  const { gameIds } = await seedPlayers(request);
+  // Same results as the recap test: Ann 3 (TB diff 4) wins, Bob 3 (diff 6) second, Cy 1. Total 44.
+  await setResult(request, gameIds[0], 'home', { homeScore: 31, awayScore: 3 });
+  await setResult(request, gameIds[1], 'home', { homeScore: 20, awayScore: 17 });
+  await setResult(request, gameIds[2], 'away', { homeScore: 10, awayScore: 14 });
+  await setResult(request, gameIds[3], 'home', { homeScore: 27, awayScore: 17 });
+  await setNow(context, FRI);
+  await loginAs(page, 'cyrus');
+  await page.goto('/leaderboard');
+
+  await expect(page.getByRole('heading', { name: 'Weekly Report' })).toBeVisible();
+  await expect(page.getByTestId('winner-names')).toHaveText('Ann');
+  await expect(page.getByTestId('podium-1').getByTestId('podium-names')).toHaveText('Ann');
+  await expect(page.getByTestId('podium-1').getByTestId('podium-rank')).toHaveText('1st');
+  await expect(page.getByTestId('podium-2').getByTestId('podium-names')).toHaveText('Bob');
+  await expect(page.getByTestId('podium-3').getByTestId('podium-names')).toHaveText('Cy');
+
+  // Games of the week. Upset = g3 (2 wrong). Lock: g0-g2 each have 2 right at 67%. Blowout: g0 by 28.
+  await expect(page.getByTestId('upset')).toContainText('Upset of the week');
+  await expect(page.getByTestId('lock')).toContainText('67% got it right');
+  await expect(page.getByTestId('blowout')).toContainText('Won by 28');
+
+  // Awards. Closest tiebreaker: Cy guessed 44 exactly. Bad beat: Bob tied Ann on 3, lost the tiebreaker by 2.
+  await expect(page.getByTestId('award-tiebreaker')).toContainText('Cy');
+  await expect(page.getByTestId('award-tiebreaker')).toContainText('Nailed it');
+  await expect(page.getByTestId('award-bad-beat')).toContainText('Bob');
+  await expect(page.getByTestId('award-bad-beat')).toContainText('Lost on the tiebreaker by 2 points');
+  await expect(page.getByTestId('award-contrarian')).toContainText('Against the crowd');
+  await expect(page.getByTestId('stat-fewest')).toContainText('Toilet bowl');
+  await expectNoPlayerCountOf(page);
+});
