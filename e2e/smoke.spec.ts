@@ -25,13 +25,13 @@ test('login page has no horizontal overflow on mobile', async ({ page, isMobile 
   expect(overflow).toBe(false);
 });
 
-test('@smoke theme uses the dark background and amber accent tokens', async ({ page }) => {
+test('@smoke theme uses the dark background and gold accent tokens', async ({ page }) => {
   await page.goto('/login');
   const vars = await page.evaluate(() => {
     const s = getComputedStyle(document.documentElement);
     return { bg: s.getPropertyValue('--bg').trim(), accent: s.getPropertyValue('--accent').trim() };
   });
-  expect(vars).toEqual({ bg: '#0f1115', accent: '#fbbf24' });
+  expect(vars).toEqual({ bg: '#0f1115', accent: '#eab308' });
 });
 
 test('@smoke time control: setNow is reflected by now()', async ({ page, context }) => {

@@ -22,7 +22,7 @@ test('@smoke theme tuner: try a preset live, keep it across reloads, copy the CS
   await setNow(context, WED);
   await loginAs(page, 'admin');
   await page.goto('/picks');
-  expect(await accentVar(page)).toBe('#fbbf24');
+  expect(await accentVar(page)).toBe('#eab308');
 
   await openTuner(page);
   await expect(page.getByTestId('contrast')).toHaveCount(3);
@@ -41,9 +41,9 @@ test('@smoke theme tuner: try a preset live, keep it across reloads, copy the CS
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('--accent: #38bdf8;');
 
   await page.getByTestId('tuner-reset').click();
-  expect(await accentVar(page)).toBe('#fbbf24');
+  expect(await accentVar(page)).toBe('#eab308');
   await page.reload();
-  expect(await accentVar(page)).toBe('#fbbf24');
+  expect(await accentVar(page)).toBe('#eab308');
 });
 
 test('theme tuner: a typed hex, and manual text colors', async ({ page, context, request }) => {

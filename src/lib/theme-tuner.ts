@@ -23,15 +23,15 @@ export const CSS_VARS: Record<keyof ThemeVars, string> = {
   onAccent: '--on-accent',
 };
 
-export const DEFAULT_THEME: ThemeVars = { accent: '#fbbf24', accentBright: '#fcd34d', onAccent: '#1a1300' };
+export const DEFAULT_THEME: ThemeVars = { accent: '#eab308', accentBright: '#efc646', onAccent: '#171201' };
 
 /** Cards sit on --surface; text on dark backgrounds is checked against it. */
 const SURFACE = '#181b22';
 const BG = '#0f1115';
 
 export const PRESETS: { name: string; accent: string }[] = [
-  { name: 'Amber', accent: '#fbbf24' },
   { name: 'Gold', accent: '#eab308' },
+  { name: 'Amber', accent: '#fbbf24' },
   { name: 'Lime', accent: '#a3e635' },
   { name: 'Teal', accent: '#2dd4bf' },
   { name: 'Sky', accent: '#38bdf8' },
@@ -126,5 +126,5 @@ export function parseStoredTheme(raw: string | null): ThemeVars | null {
   }
 }
 
-/** Inline <head> script: applies a stored theme before first paint (staging only), so pages don't flash amber. */
+/** Inline <head> script: applies a stored theme before first paint (staging only), so pages don't flash the default accent. */
 export const THEME_BOOT_SCRIPT = `try{var d=JSON.parse(localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)})||'null');var h=/^#[0-9a-f]{6}$/;if(d&&h.test(d.accent)&&h.test(d.accentBright)&&h.test(d.onAccent)){var s=document.documentElement.style;s.setProperty('--accent',d.accent);s.setProperty('--accent-bright',d.accentBright);s.setProperty('--on-accent',d.onAccent);}}catch(e){}`;

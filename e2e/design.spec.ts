@@ -93,7 +93,7 @@ test('team logos show next to abbreviations, served locally in tests (never the 
   await expect(logo).toHaveAttribute('src', '/api/test/logo/500-dark/kc.png');
   await expect.poll(() => logo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await expect(page.getByTestId(`pick-${gameIds[0]}-away`).getByTestId('team-logo')).toHaveAttribute('data-team', 'BUF');
-  // A selected pick is an amber outline with a faint tint (dark background), so its logo stays the dark variant.
+  // A selected pick is a gold outline with a faint tint (dark background), so its logo stays the dark variant.
   await btn.click();
   await expect(btn).toHaveAttribute('aria-pressed', 'true');
   await expect(btn.getByTestId('team-logo')).toHaveAttribute('src', '/api/test/logo/500-dark/kc.png');
@@ -101,7 +101,7 @@ test('team logos show next to abbreviations, served locally in tests (never the 
   expect(external).toEqual([]);
 });
 
-test('@smoke a selected pick is an amber outline with a faint tint, matching the locked view', async ({ page, context, request }) => {
+test('@smoke a selected pick is a gold outline with a faint tint, matching the locked view', async ({ page, context, request }) => {
   const { gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
   await setNow(context, WED);
   await loginAs(page, 'admin');
@@ -114,10 +114,10 @@ test('@smoke a selected pick is an amber outline with a faint tint, matching the
     const cs = getComputedStyle(b);
     return { border: cs.borderTopColor, bg: cs.backgroundColor, color: cs.color };
   });
-  expect(look.border).toBe('rgb(251, 191, 36)'); // --accent outline
-  expect(look.color).toBe('rgb(252, 211, 77)'); // --accent-bright text
-  expect(look.bg).not.toBe('rgb(251, 191, 36)'); // no solid amber fill
-  expect(look.bg).toMatch(/rgba\(251, 191, 36, 0\.15\)|oklab|color-mix/); // faint amber tint
+  expect(look.border).toBe('rgb(234, 179, 8)'); // --accent outline
+  expect(look.color).toBe('rgb(239, 198, 70)'); // --accent-bright text
+  expect(look.bg).not.toBe('rgb(234, 179, 8)'); // no solid gold fill
+  expect(look.bg).toMatch(/rgba\(234, 179, 8, 0\.15\)|oklab|color-mix/); // faint gold tint
 });
 
 test('games tab: live score, quarter and clock; halftime; final score; live data never scores', async ({ page, context, request }) => {

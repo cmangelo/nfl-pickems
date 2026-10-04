@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   contrastChecks,
@@ -63,6 +65,17 @@ describe('deriveTheme', () => {
   });
 });
 
+describe('default theme', () => {
+  it('is gold, with the text colors deriveTheme gives it (keep globals.css in sync)', () => {
+    expect(DEFAULT_THEME).toEqual(deriveTheme('#eab308'));
+  });
+  it('matches the variables in globals.css', () => {
+    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+    const v = (name: string) => new RegExp(`${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(css)?.[1];
+    expect({ accent: v('--accent'), accentBright: v('--accent-bright'), onAccent: v('--on-accent') }).toEqual(DEFAULT_THEME);
+  });
+});
+
 describe('storage and export', () => {
   it('parses a stored theme and rejects malformed ones', () => {
     expect(parseStoredTheme(JSON.stringify(DEFAULT_THEME))).toEqual(DEFAULT_THEME);
@@ -71,7 +84,7 @@ describe('storage and export', () => {
     expect(parseStoredTheme(JSON.stringify({ ...DEFAULT_THEME, onAccent: 'red' }))).toBeNull();
   });
   it('css snippet lists the three variables', () => {
-    expect(cssSnippet(DEFAULT_THEME)).toBe('  --accent: #fbbf24;\n  --accent-bright: #fcd34d;\n  --on-accent: #1a1300;');
+    expect(cssSnippet(DEFAULT_THEME)).toBe('  --accent: #eab308;\n  --accent-bright: #efc646;\n  --on-accent: #171201;');
   });
   it('boot script applies a stored theme and ignores bad data', () => {
     const props: Record<string, string> = {};
