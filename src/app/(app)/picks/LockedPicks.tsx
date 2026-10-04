@@ -1,5 +1,7 @@
 import { Check, X } from 'lucide-react';
+import LiveBadge from '@/components/LiveBadge';
 import TeamLogo from '@/components/TeamLogo';
+import { displayScore, liveLabel, liveStanding, type LiveStanding } from '@/lib/game-view';
 import type { GameRow } from '@/lib/selected-week';
 import type { EntryRecord } from '@/lib/picks';
 import { scoreEntry, type Side } from '@/lib/scoring';
@@ -19,6 +21,12 @@ const MARK_STYLE: Record<Mark, string> = {
   wrong: 'border-wrong bg-wrong/15 text-[#ff9c9c] line-through',
   pending: 'border-accent bg-accent/15 text-accent-bright',
   void: 'border-border bg-surface-2 text-muted',
+};
+
+const STANDING: Record<LiveStanding, { text: string; className: string }> = {
+  leading: { text: 'Winning', className: 'font-semibold text-[#8ff0bc]' },
+  trailing: { text: 'Losing', className: 'font-semibold text-[#ff9c9c]' },
+  tied: { text: 'Tied', className: 'font-semibold text-fg' },
 };
 
 function MarkIcon({ mark }: { mark: Mark }) {
@@ -85,7 +93,12 @@ export default function LockedPicks({
         const mark = markFor(g, pick);
         const settled = g.status === 'final' && g.winner !== null;
         const tie = g.winner === 'tie';
-        const side = (s: Side, team: string, score: number | null) => {
+        // Final score once settled; ESPN's in-game score while live (display only: the pick stays pending).
+        const live = liveLabel(g);
+        const shown = displayScore(g);
+        const standing = liveStanding(pick, shown);
+        const side = (s: Side, team: string) => {
+          const score = shown ? shown[s] : null;
           const on = pick === s;
           return (
             <div
@@ -98,16 +111,26 @@ export default function LockedPicks({
               {on && <MarkIcon mark={mark} />}
               <TeamLogo abbr={team} size={22} />
               <span>{team}</span>
-              {settled && score !== null && <span className="text-sm font-semibold">{score}</span>}
+              {score !== null && (
+                <span data-testid={`score-${g.id}-${s}`} className="text-sm font-semibold tabular-nums">
+                  {score}
+                </span>
+              )}
             </div>
           );
         };
         return (
-          <div key={g.id} data-testid={`game-${g.id}`} data-result={mark} className="rounded-xl border border-border bg-surface p-3">
+          <div key={g.id} data-testid={`game-${g.id}`} data-result={mark} data-live={!!live} className="rounded-xl border border-border bg-surface p-3">
             <div className="mb-2 flex justify-between text-xs text-muted">
-              <span>{settled ? (tie ? 'Tie' : 'Final') : formatPT(g.kickoffAt, "EEE h:mm a 'PT'")}</span>
-              <span>
-                {mark === 'right'
+              {live ? (
+                <LiveBadge label={live} testId={`game-status-${g.id}`} />
+              ) : (
+                <span data-testid={`game-status-${g.id}`}>{settled ? (tie ? 'Tie' : 'Final') : formatPT(g.kickoffAt, "EEE h:mm a 'PT'")}</span>
+              )}
+              <span data-testid={`game-mark-${g.id}`} className={standing ? STANDING[standing].className : undefined}>
+                {standing
+                  ? STANDING[standing].text
+                  : mark === 'right'
                   ? 'Correct'
                   : mark === 'wrong'
                     ? tie
@@ -121,9 +144,9 @@ export default function LockedPicks({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {side('away', g.awayTeam, g.awayScore)}
+              {side('away', g.awayTeam)}
               <span aria-hidden="true" className="text-sm text-muted">@</span>
-              {side('home', g.homeTeam, g.homeScore)}
+              {side('home', g.homeTeam)}
             </div>
           </div>
         );

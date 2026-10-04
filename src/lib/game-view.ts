@@ -27,6 +27,40 @@ export function liveLabel(g: LiveFields): string | null {
   return g.liveClock ? `${periodLabel(p)} · ${g.liveClock}` : periodLabel(p);
 }
 
+export interface ScoreFields extends LiveFields {
+  winner: 'home' | 'away' | 'tie' | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  liveHomeScore: number | null;
+  liveAwayScore: number | null;
+}
+
+export interface DisplayScore {
+  home: number;
+  away: number;
+  /** True for ESPN's in-game score (display only, never scored). */
+  live: boolean;
+}
+
+/** The score to show: the final score once settled, ESPN's in-game score while live, otherwise null. */
+export function displayScore(g: ScoreFields): DisplayScore | null {
+  if (g.status === 'final' && g.winner !== null) {
+    return g.homeScore !== null && g.awayScore !== null ? { home: g.homeScore, away: g.awayScore, live: false } : null;
+  }
+  if (liveLabel(g) === null || g.liveHomeScore === null || g.liveAwayScore === null) return null;
+  return { home: g.liveHomeScore, away: g.liveAwayScore, live: true };
+}
+
+export type LiveStanding = 'leading' | 'trailing' | 'tied';
+
+/** How a pick is doing in a live game; null when the game isn't live or there is no pick. */
+export function liveStanding(pick: 'home' | 'away' | undefined, score: DisplayScore | null): LiveStanding | null {
+  if (!pick || !score?.live) return null;
+  const mine = score[pick];
+  const theirs = score[pick === 'home' ? 'away' : 'home'];
+  return mine > theirs ? 'leading' : mine < theirs ? 'trailing' : 'tied';
+}
+
 /** ESPN's public CDN. Abbreviations come from ESPN, so its lowercase file names match (kc, wsh, lar, ...). */
 export const ESPN_LOGO_BASE = 'https://a.espncdn.com/i/teamlogos/nfl';
 

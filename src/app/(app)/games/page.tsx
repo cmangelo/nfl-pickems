@@ -1,7 +1,8 @@
+import LiveBadge from '@/components/LiveBadge';
 import NoWeeks from '@/components/NoWeeks';
 import RevealedCard from '@/components/RevealedCard';
 import TeamLogo from '@/components/TeamLogo';
-import { entryCount, liveLabel, splitPercents } from '@/lib/game-view';
+import { displayScore, entryCount, liveLabel, splitPercents } from '@/lib/game-view';
 import { barColors } from '@/lib/team-colors';
 import { requireUser } from '@/lib/auth';
 import { getEntries, listEntries } from '@/lib/picks';
@@ -72,8 +73,8 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
         const settled = g.status === 'final' && g.winner !== null;
         const live = liveLabel(g);
         // Final score once settled; ESPN's in-game score while live (display only, never scored).
-        const scoreOf = (s: Side) =>
-          settled ? (s === 'home' ? g.homeScore : g.awayScore) : live ? (s === 'home' ? g.liveHomeScore : g.liveAwayScore) : null;
+        const shown = displayScore(g);
+        const scoreOf = (s: Side) => (shown ? shown[s] : null);
         const side = (s: Side, team: string) => {
           const won = settled && g.winner === s;
           const score = scoreOf(s);
@@ -157,11 +158,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
           >
             <div className="mb-2 flex justify-between text-xs text-muted">
               {live ? (
-                <span data-testid={`game-status-${g.id}`} data-live="true" className="inline-flex items-center gap-1.5 font-bold text-[#ff9c9c]">
-                  <span aria-hidden="true" className="size-[7px] animate-pulse rounded-full bg-current" />
-                  <span className="sr-only">Live: </span>
-                  {live}
-                </span>
+                <LiveBadge label={live} testId={`game-status-${g.id}`} />
               ) : (
                 <span data-testid={`game-status-${g.id}`}>{statusText(g)}</span>
               )}
