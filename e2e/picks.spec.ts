@@ -90,7 +90,8 @@ test('locked week: read-only, results marked right / wrong / tie / pending, head
   await expect(page.getByTestId('chip-correct-count')).toHaveCSS('color', 'rgb(34, 197, 94)');
   await expect(page.getByTestId('chip-wrong-count')).toHaveCSS('color', 'rgb(239, 68, 68)');
   await expect(page.getByTestId('chip-pending-count')).not.toHaveClass(/text-(correct|wrong)/);
-  await expect(page.getByTestId('picks-divider')).toHaveText('Your picks');
+  await expect(page.getByTestId('score-heading')).toHaveText('Scorecard');
+  await expect(page.getByTestId('picks-heading')).toHaveText('Your picks');
   await expect(page.getByTestId(`game-${gameIds[0]}`)).toHaveAttribute('data-result', 'right');
   await expect(page.getByTestId(`game-${gameIds[1]}`)).toHaveAttribute('data-result', 'wrong');
   await expect(page.getByTestId(`game-${gameIds[2]}`)).toHaveAttribute('data-result', 'wrong');

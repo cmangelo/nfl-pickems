@@ -63,19 +63,22 @@ export default function LockedPicks({
     </div>
   );
 
+  const sectionLabel = (text: string, id: string) => (
+    <h2 data-testid={id} className="-mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+      {text}
+    </h2>
+  );
+
   return (
     <div className="flex flex-col gap-4">
+      {sectionLabel('Scorecard', 'score-heading')}
       <div className="flex gap-2">
         {chip(scored.correct, 'Correct', 'chip-correct', 'text-correct')}
         {chip(scored.wrong, 'Wrong', 'chip-wrong', 'text-wrong')}
         {chip(scored.pending, 'To play', 'chip-pending')}
       </div>
 
-      <div data-testid="picks-divider" role="separator" className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-muted">
-        <span aria-hidden="true" className="h-px flex-1 bg-border" />
-        {other ? 'Picks' : 'Your picks'}
-        <span aria-hidden="true" className="h-px flex-1 bg-border" />
-      </div>
+      {sectionLabel(other ? 'Picks' : 'Your picks', 'picks-heading')}
 
       {games.map((g) => {
         const pick = entry.picks[g.id];
