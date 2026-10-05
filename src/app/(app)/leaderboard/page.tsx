@@ -11,6 +11,7 @@ import { getLastSyncedAt, refreshWithBudget } from '@/lib/sync';
 import { formatPT, now as getNow } from '@/lib/time';
 import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
 import { loadEntryFee, loadWeekSummary } from '@/lib/week-data';
+import { entryLabel } from '@/lib/week-view';
 import { NotCounted, RankedTable } from './RankedTable';
 import RefreshButton from './RefreshButton';
 import WeeklyReport from './WeeklyReport';
@@ -43,7 +44,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         {openPot && <PotCard pot={openPot} open />}
         <RevealedCard
           lockShort={formatPT(effectiveLock(week), "EEE h:mm a 'PT'")}
-          names={entries.filter((e) => e.entryIndex === 0).map((e) => ({ userId: e.userId, firstName: e.firstName, entries: e.entryCount }))}
+          names={entries.filter((e) => e.entryIndex === 0).map((e) => ({ userId: e.userId, name: e.username, entries: e.entryCount }))}
           count={entries.length}
           viewerId={user.id}
         />
@@ -99,7 +100,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const entries = await listEntries(week.id);
   const report = weekReport(
     games,
-    entries.map((e) => ({ entryId: e.entryId, userId: e.userId, name: e.label, paid: e.paid, tiebreaker: e.tiebreaker, picks: e.picks })),
+    entries.map((e) => ({ entryId: e.entryId, userId: e.userId, name: entryLabel(e.username, e.entryIndex, e.entryCount), paid: e.paid, tiebreaker: e.tiebreaker, picks: e.picks })),
     summary,
   );
   return (

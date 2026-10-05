@@ -42,6 +42,7 @@ export default function LockedPicks({
   userName,
   tiebreakerLabel,
   lockShort,
+  now,
   other = false,
 }: {
   games: GameRow[];
@@ -50,6 +51,8 @@ export default function LockedPicks({
   userName: string;
   tiebreakerLabel: string;
   lockShort: string;
+  /** Effective current time: an unsettled game that hasn't kicked off yet reads "Not started". */
+  now: Date;
   /** Viewing another player's picks (Leaderboard drill-down). */
   other?: boolean;
 }) {
@@ -140,7 +143,9 @@ export default function LockedPicks({
                       ? 'Void'
                       : g.status === 'postponed'
                         ? 'Postponed'
-                        : 'Pending'}
+                        : g.kickoffAt > now
+                          ? 'Not started'
+                          : 'Pending'}
               </span>
             </div>
             <div className="flex items-center gap-2">

@@ -23,7 +23,7 @@ export default function PotCard({ pot, open = false }: { pot: Pot; open?: boolea
             {potDetail(pot)}
           </div>
           <div className="mt-0.5 text-xs font-semibold text-accent-bright/80">
-            {open ? 'Grows as entries are paid' : 'Winner takes all · ties split it'}
+            {open ? 'Grows as entries are paid' : 'Winner takes all'}
           </div>
         </div>
       </div>
