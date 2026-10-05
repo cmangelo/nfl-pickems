@@ -1,4 +1,4 @@
-/** Open-week card for Leaderboard / Games: picks are hidden until the lock; shows "N in" (and optionally names). */
+/** Open-week card for Leaderboard / Games: picks are hidden until the lock; shows "N in" (and optionally usernames). */
 export default function RevealedCard({
   lockShort,
   names,
@@ -7,7 +7,7 @@ export default function RevealedCard({
 }: {
   lockShort: string;
   /** Players with submitted entries (paid or not), and how many entries each. Omit `names` to show the count only. */
-  names?: { userId: number; firstName: string; entries: number }[];
+  names?: { userId: number; name: string; entries: number }[];
   /** Submitted entries (a player with two entries counts twice). */
   count: number;
   viewerId: number;
@@ -29,7 +29,7 @@ export default function RevealedCard({
           <ul data-testid="in-list" className="mt-2 flex flex-wrap gap-2">
             {names.map((n) => (
               <li key={n.userId} className="rounded-full border border-border bg-surface-2 px-3 py-1 text-sm">
-                {n.firstName}
+                {n.name}
                 {n.entries > 1 && <span className="font-semibold text-accent-bright"> ×{n.entries}</span>}
                 {n.userId === viewerId && <span className="text-muted"> (you)</span>}
               </li>

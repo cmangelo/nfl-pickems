@@ -135,11 +135,11 @@ test('@smoke locked week: live score, clock and winning / losing / tied on my pi
   await expect(page.getByTestId(`game-status-${g2}`)).toContainText('Q1 · 9:30');
   await expect(page.getByTestId(`game-mark-${g2}`)).toHaveText('Tied');
 
-  // Not started: kickoff time, no score, still "Pending".
+  // Not started: kickoff time, no score, "Not started".
   await expect(page.getByTestId(`game-${g3}`)).toHaveAttribute('data-live', 'false');
   await expect(page.getByTestId(`game-status-${g3}`)).toContainText('PT');
   await expect(page.getByTestId(`score-${g3}-home`)).toHaveCount(0);
-  await expect(page.getByTestId(`game-mark-${g3}`)).toHaveText('Pending');
+  await expect(page.getByTestId(`game-mark-${g3}`)).toHaveText('Not started');
 
   // Live games never score: everything is still to play.
   for (const id of gameIds) await expect(page.getByTestId(`game-${id}`)).toHaveAttribute('data-result', 'pending');
@@ -226,9 +226,9 @@ test('@smoke week picker lists weeks with my result, winner, and navigates back 
   await expect(r6).toContainText('Final');
   await expect(r6).toContainText('You: 3/4 · 1st');
   await expect(r6).toContainText(/you won/i);
-  await expect(r6).toContainText('Winner: Admin');
+  await expect(r6).toContainText('Winner: admin');
   await expect(page.getByTestId('week-row-5')).toContainText("You didn't play");
-  await expect(page.getByTestId('week-row-5')).toContainText('Winner: Bob');
+  await expect(page.getByTestId('week-row-5')).toContainText('Winner: bob');
   await expect(page.getByTestId('week-row-7')).toContainText('Open');
   await expect(page.locator('body')).not.toContainText(/\bof \d+\b(?! picked)/);
   await expect(page.getByText('Next week unlocks Tuesday at 12:00 AM PT.')).toBeVisible();

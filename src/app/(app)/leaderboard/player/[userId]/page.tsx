@@ -9,6 +9,7 @@ import { refreshWithBudget } from '@/lib/sync';
 import { formatPT, now as getNow } from '@/lib/time';
 import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
 import { selectEntry } from '@/lib/entry-select';
+import { entryLabel } from '@/lib/week-view';
 import EntryTabs from '../../../picks/EntryTabs';
 import LockedPicks from '../../../picks/LockedPicks';
 
@@ -44,7 +45,7 @@ export default async function PlayerPicksPage({
   const tbLabel = tb
     ? `Total points in ${tb.awayTeam} @ ${tb.homeTeam} (${formatPT(tb.kickoffAt, 'EEE h:mm a')})`
     : 'Tiebreaker';
-  const name = entry?.firstName ?? 'Player';
+  const name = entry?.username ?? 'Player';
   const mine = entry?.userId === viewer.id;
 
   return (
@@ -70,9 +71,10 @@ export default async function PlayerPicksPage({
         games={games}
         entry={entry}
         weekNumber={week.weekNumber}
-        userName={entry?.label ?? name}
+        userName={entry ? entryLabel(entry.username, entry.entryIndex, entry.entryCount) : name}
         tiebreakerLabel={tbLabel}
         lockShort={formatPT(effectiveLock(week), "EEE h:mm a 'PT'")}
+        now={t}
         other={!mine}
       />
     </div>

@@ -226,25 +226,25 @@ test('admin adds an entry for a player after the lock, then deletes it', async (
 
 test('@smoke locked week: each entry is ranked, shown, split and listed on its own', async ({ page, context, request }) => {
   const { weekId, gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 4, tuesday: WED, results: ['home', 'home', null, null] });
-  await createUser(request, 'Ann', 'ann');
-  await createUser(request, 'Bob', 'bob');
-  await submitPicksFor(request, 'ann', weekId, [H, H, H, H], 40); // 2 correct
-  await submitPicksFor(request, 'ann', weekId, [A, A, H, H], 41, 'new'); // 0 correct
-  await submitPicksFor(request, 'ann', weekId, [A, H, A, A], 42, 'new'); // 1 correct, stays unpaid
-  await submitPicksFor(request, 'bob', weekId, [H, A, A, A], 30); // 1 correct
-  await setPaid(request, 'ann', weekId, true, 1);
-  await setPaid(request, 'ann', weekId, true, 2);
-  await setPaid(request, 'bob', weekId, true);
+  await createUser(request, 'Ann', 'annie');
+  await createUser(request, 'Bob', 'bobby');
+  await submitPicksFor(request, 'annie', weekId, [H, H, H, H], 40); // 2 correct
+  await submitPicksFor(request, 'annie', weekId, [A, A, H, H], 41, 'new'); // 0 correct
+  await submitPicksFor(request, 'annie', weekId, [A, H, A, A], 42, 'new'); // 1 correct, stays unpaid
+  await submitPicksFor(request, 'bobby', weekId, [H, A, A, A], 30); // 1 correct
+  await setPaid(request, 'annie', weekId, true, 1);
+  await setPaid(request, 'annie', weekId, true, 2);
+  await setPaid(request, 'bobby', weekId, true);
   await setNow(context, FRI);
-  await loginAs(page, 'ann');
+  await loginAs(page, 'annie');
 
   await page.goto(`/leaderboard?week=${weekId}`);
   const rows = page.locator('[data-testid^="rank-row-"]');
   await expect(rows).toHaveCount(3);
-  await expect(rows.getByTestId('player-name')).toHaveText(['Ann (1)', 'Bob', 'Ann (2)']);
+  await expect(rows.getByTestId('player-name')).toHaveText(['annie (1)', 'bobby', 'annie (2)']);
   await expect(rows.getByTestId('correct-count')).toHaveText(['2', '1', '0']);
   await expect(rows.getByText('YOU', { exact: true })).toHaveCount(2);
-  await expect(page.getByTestId('not-counted')).toContainText('Ann (3)');
+  await expect(page.getByTestId('not-counted')).toContainText('annie (3)');
   await expectNoPlayerCountOf(page);
 
   // Drill into entry 2.
@@ -284,13 +284,13 @@ test('@smoke locked week: each entry is ranked, shown, split and listed on its o
   // Once final, the winner banner names the entry.
   for (const id of gameIds.slice(2)) await setResult(request, id, 'home');
   await page.goto(`/leaderboard?week=${weekId}`);
-  await expect(page.locator('[data-testid^="rank-row-"]').getByTestId('player-name')).toHaveText(['Ann (1)', 'Ann (2)', 'Bob']);
-  // Upset of the week counts entries: game 2 was missed by Ann (2) and Bob.
+  await expect(page.locator('[data-testid^="rank-row-"]').getByTestId('player-name')).toHaveText(['annie (1)', 'annie (2)', 'bobby']);
+  // Upset of the week counts entries: game 2 was missed by annie (2) and bobby.
   await expect(page.getByTestId('upset-wrong')).toHaveText('2 entries got it wrong');
-  await expect(page.getByTestId('upset-right')).toHaveText('Only 1 entry picked it (Ann (1))');
+  await expect(page.getByTestId('upset-right')).toHaveText('Only 1 entry picked it (annie (1))');
   await page.goto('/weeks');
   await expect(page.getByTestId('week-row-7')).toContainText('You won');
-  await expect(page.getByTestId('week-row-7')).toContainText('Winner: Ann (1)');
+  await expect(page.getByTestId('week-row-7')).toContainText('Winner: annie (1)');
 });
 
 test('@smoke games: splits count every paid entry, with a two-color bar and percentages', async ({ page, context, request }) => {

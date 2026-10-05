@@ -135,6 +135,7 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
           userName={mine.length > 1 ? `${user.firstName} (${index + 1})` : user.firstName}
           tiebreakerLabel={tbLabel}
           lockShort={formatPT(lock, "EEE h:mm a 'PT'")}
+          now={t}
         />
       </>
     );
