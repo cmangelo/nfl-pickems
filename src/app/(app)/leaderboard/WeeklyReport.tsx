@@ -1,4 +1,4 @@
-import { Flame, Frown, Lock, Scale, Shuffle, Target, Trash2, Trophy, Zap, type LucideIcon } from 'lucide-react';
+import { CloudRain, Flame, Frown, Lock, Scale, Shuffle, Target, Trophy, Zap, type LucideIcon } from 'lucide-react';
 import TeamLogo from '@/components/TeamLogo';
 import { joinNames, upsetHeadline, upsetRightText, upsetWrongText, winnerBanner } from '@/lib/leaderboard-view';
 import { formatMoney, payoutLine, type Pot } from '@/lib/pot';
@@ -307,8 +307,8 @@ export default function WeeklyReport({
           />
           <AwardCard
             testId="stat-fewest"
-            icon={Trash2}
-            label="Toilet bowl"
+            icon={CloudRain}
+            label="Rough week"
             tone="#a16207"
             names={joinNames(stats.fewestCorrect.names)}
             value={`${stats.fewestCorrect.correct} correct`}
@@ -327,7 +327,7 @@ export default function WeeklyReport({
       {gameCards.length > 0 && (
         <section aria-label="Games of the week">
           <SectionTitle>Games of the week</SectionTitle>
-          <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">{gameCards}</div>
+          <div data-testid="games-of-week" className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-1">{gameCards}</div>
         </section>
       )}
 

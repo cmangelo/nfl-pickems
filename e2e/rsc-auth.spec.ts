@@ -41,6 +41,8 @@ function protectedPaths() {
 function appPaths() {
   return [
     `/leaderboard?week=${weekId}`,
+    `/leaderboard/season?week=${weekId}`,
+    `/leaderboard/season/player/${victimId}?week=${weekId}`,
     `/games?week=${weekId}`,
     `/picks?week=${weekId}`,
     `/weeks?week=${weekId}`,
