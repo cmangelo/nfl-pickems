@@ -278,6 +278,14 @@ test('@smoke weekly report: winner, podium, games of the week and awards', async
   await expect(page.getByTestId('upset')).toContainText('Upset of the week');
   await expect(page.getByTestId('lock')).toContainText('67% got it right');
   await expect(page.getByTestId('blowout')).toContainText('Won by 28');
+  // The first card lines up with the page gutter (not flush to the screen edge), also after a swipe snaps back.
+  const title = await page.getByRole('heading', { name: 'Games of the week' }).boundingBox();
+  const strip = page.getByTestId('games-of-week');
+  const firstCard = strip.locator('> *').first();
+  await expect.poll(async () => (await firstCard.boundingBox())!.x).toBeCloseTo(title!.x, 0);
+  await strip.evaluate((el) => el.scrollTo({ left: 40 }));
+  await strip.evaluate((el) => el.scrollTo({ left: 0 }));
+  await expect.poll(async () => (await firstCard.boundingBox())!.x).toBeCloseTo(title!.x, 0);
 
   // Awards. Closest tiebreaker: Cy guessed 44 exactly. Bad beat: Bob tied Ann on 3, lost the tiebreaker by 2.
   await expect(page.getByTestId('award-tiebreaker')).toContainText('cyrus');
@@ -285,7 +293,7 @@ test('@smoke weekly report: winner, podium, games of the week and awards', async
   await expect(page.getByTestId('award-bad-beat')).toContainText('bobby');
   await expect(page.getByTestId('award-bad-beat')).toContainText('Lost on the tiebreaker by 2 points');
   await expect(page.getByTestId('award-contrarian')).toContainText('Against the crowd');
-  await expect(page.getByTestId('stat-fewest')).toContainText('Toilet bowl');
+  await expect(page.getByTestId('stat-fewest')).toContainText('Rough week');
   await expectNoPlayerCountOf(page);
 });
 
