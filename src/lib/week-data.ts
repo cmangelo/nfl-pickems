@@ -69,7 +69,6 @@ export interface PlayerSeason {
   row: SeasonRow | null;
   weeks: PlayerWeek[];
   hasMoney: boolean;
-  weekNumbers: number[];
 }
 
 /** One player's season: their row of the season table plus a week-by-week breakdown. */
@@ -85,6 +84,5 @@ export async function loadPlayerSeason(season: number, userId: number, now: Date
     row: stats.rows.find((r) => r.userId === userId) ?? null,
     weeks: playerWeeks(inputs, userId),
     hasMoney: stats.hasMoney,
-    weekNumbers: stats.weekNumbers,
   };
 }

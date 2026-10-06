@@ -6,10 +6,8 @@ import {
   playerWeeks,
   pct0,
   pct1,
-  seasonLeaders,
   seasonStats,
   tbAvgLabel,
-  weeksCountedLabel,
   type SeasonRow,
   type SeasonWeekInput,
 } from './season';
@@ -233,26 +231,12 @@ describe('compareRows', () => {
     expect(sorted('pct', true)).toEqual(['a', 'b', 'c']);
     expect(sorted('pct')).toEqual(['b', 'a', 'c']);
   });
+  it('entries: more first', () => {
+    const many = { ...a, entries: 3 };
+    expect([b, many, c].sort((x, y) => compareRows(x, y, 'entries')).map((r) => r.name)).toEqual(['a', 'b', 'c']);
+  });
   it('ties fall back to percent, then wins, then name', () => {
     expect(sorted('weeks')).toEqual(['b', 'a', 'c']);
-  });
-});
-
-describe('seasonLeaders', () => {
-  it('cards with tied holders sharing', () => {
-    expect(seasonLeaders(stats)).toEqual([
-      { id: 'wins', title: 'Most wins', names: ['ann'], value: '2 wins' },
-      { id: 'pct', title: 'Best percent', names: ['ann'], value: '60.0%' },
-      { id: 'best', title: 'Best week', names: ['ann'], value: '100%', sub: 'Week 1' },
-      { id: 'tb', title: 'Sharpest tiebreaker', names: ['bob'], value: '±0.0 avg' },
-      { id: 'streak', title: 'Hot streak', names: ['ann'], value: '2 straight' },
-      { id: 'net', title: 'Most money up', names: ['ann'], value: '+$23.33' },
-    ]);
-  });
-  it('drops cards nobody qualifies for', () => {
-    const free = seasonStats([{ ...week1, feeCents: null }], names);
-    expect(seasonLeaders(free).map((l) => l.title)).toEqual(['Most wins', 'Best percent', 'Best week', 'Sharpest tiebreaker', 'Hot streak']);
-    expect(seasonLeaders({ rows: [], weekNumbers: [], hasMoney: false })).toEqual([]);
   });
 });
 
@@ -265,11 +249,5 @@ describe('labels', () => {
     expect(netLabel(3000)).toBe('+$30');
     expect(netLabel(-334)).toBe('−$3.34');
     expect(netLabel(0)).toBe('$0');
-  });
-  it('weeks counted collapses runs', () => {
-    expect(weeksCountedLabel([])).toBe('No weeks');
-    expect(weeksCountedLabel([2])).toBe('Week 2');
-    expect(weeksCountedLabel([3, 1, 2, 5])).toBe('Weeks 1–3, 5');
-    expect(weeksCountedLabel([1, 2, 3, 4, 5])).toBe('Weeks 1–5');
   });
 });

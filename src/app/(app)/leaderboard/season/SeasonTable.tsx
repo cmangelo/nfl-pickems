@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { compareRows, netLabel, pct0, pct1, SORT_ASCENDING, tbAvgLabel, type SeasonRow, type SeasonSortKey } from '@/lib/season-view';
+import { compareRows, pct0, pct1, SORT_ASCENDING, tbAvgLabel, type SeasonRow, type SeasonSortKey } from '@/lib/season-view';
 import Avatar from '@/components/Avatar';
 
 interface Column {
@@ -34,27 +34,13 @@ const COLUMNS: Column[] = [
     key: 'best',
     label: 'Best wk',
     title: 'Best week',
-    cell: (r) =>
-      r.best ? (
-        <>
-          {pct0(r.best.pct)} <span className="text-xs text-muted">W{r.best.weekNumber}</span>
-        </>
-      ) : (
-        dash
-      ),
+    cell: (r) => (r.best ? pct0(r.best.pct) : dash),
   },
   { key: 'tb', label: 'TB ±', title: 'Average tiebreaker distance', cell: (r) => (r.avgTbDiff === null ? dash : tbAvgLabel(r.avgTbDiff)) },
-  { key: 'streak', label: 'Streak', title: 'Longest correct streak', cell: (r) => r.streak },
   { key: 'top3', label: 'Top 3', title: 'Top 3 finishes', cell: (r) => r.top3 },
   { key: 'weeks', label: 'Wks', title: 'Weeks played', cell: (r) => r.weeks },
+  { key: 'entries', label: 'Entries', title: 'Paid entries', cell: (r) => r.entries },
 ];
-
-const NET: Column = {
-  key: 'net',
-  label: 'Net',
-  title: 'Net winnings',
-  cell: (r) => <span className={r.netCents > 0 ? 'text-correct' : r.netCents < 0 ? 'text-[#ff9c9c]' : ''}>{netLabel(r.netCents)}</span>,
-};
 
 /**
  * The season table: one row per player, sortable by any stat (tap a header; tap again to flip). Scrolls
@@ -63,17 +49,15 @@ const NET: Column = {
 export default function SeasonTable({
   rows,
   viewerId,
-  hasMoney,
   weekId,
 }: {
   rows: SeasonRow[];
   viewerId: number;
-  hasMoney: boolean;
   /** Selected week, kept in the player links. */
   weekId: number;
 }) {
   const [sort, setSort] = useState<{ key: SeasonSortKey; reverse: boolean }>({ key: 'pct', reverse: false });
-  const columns = hasMoney ? [...COLUMNS.slice(0, 2), NET, ...COLUMNS.slice(2)] : COLUMNS;
+  const columns = COLUMNS;
   const sorted = useMemo(() => [...rows].sort((a, b) => compareRows(a, b, sort.key, sort.reverse)), [rows, sort]);
 
   const ariaSort = (key: SeasonSortKey) => {

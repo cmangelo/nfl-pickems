@@ -5,7 +5,7 @@ import Avatar from '@/components/Avatar';
 import NoWeeks from '@/components/NoWeeks';
 import { requireUser } from '@/lib/auth';
 import { formatMoney } from '@/lib/pot';
-import { netLabel, pct0, pct1, tbAvgLabel, weeksCountedLabel } from '@/lib/season';
+import { netLabel, pct0, pct1, tbAvgLabel } from '@/lib/season';
 import { getSelectedWeek } from '@/lib/selected-week';
 import { now as getNow } from '@/lib/time';
 import { isId } from '@/lib/validate';
@@ -59,7 +59,7 @@ export default async function PlayerSeasonPage({
             {mine ? 'Your season' : p.username}
           </h1>
           <p className="text-sm text-muted">
-            {week.season} Season{p.weekNumbers.length > 0 && ` · ${weeksCountedLabel(p.weekNumbers)}`}
+            {week.season} Season
           </p>
         </div>
       </header>
@@ -83,7 +83,7 @@ export default async function PlayerSeasonPage({
               <Tile testId="tile-top3" label="Top 3" value={r.top3} />
             )}
             <Tile testId="tile-picks" label="Picks" value={`${r.correct}-${r.graded - r.correct}`} />
-            <Tile testId="tile-best" label="Best week" value={r.best ? <>{pct0(r.best.pct)} <span className="text-xs font-normal text-muted">Wk {r.best.weekNumber}</span></> : '–'} />
+            <Tile testId="tile-best" label="Best week" value={r.best ? pct0(r.best.pct) : '–'} />
             <Tile testId="tile-tb" label="TB ±" value={r.avgTbDiff === null ? '–' : tbAvgLabel(r.avgTbDiff)} />
             <Tile testId="tile-streak" label="Streak" value={r.streak} />
             {p.hasMoney && <Tile testId="tile-top3" label="Top 3" value={r.top3} />}

@@ -40,7 +40,7 @@ export interface SeasonRow {
   streak: number;
 }
 
-export type SeasonSortKey = 'pct' | 'wins' | 'correct' | 'best' | 'tb' | 'streak' | 'top3' | 'weeks' | 'net';
+export type SeasonSortKey = 'pct' | 'wins' | 'correct' | 'best' | 'tb' | 'top3' | 'weeks' | 'entries';
 
 /** Each key's natural direction: lower is better only for the tiebreaker distance. */
 export const SORT_ASCENDING: Record<SeasonSortKey, boolean> = {
@@ -49,10 +49,9 @@ export const SORT_ASCENDING: Record<SeasonSortKey, boolean> = {
   correct: false,
   best: false,
   tb: true,
-  streak: false,
   top3: false,
   weeks: false,
-  net: false,
+  entries: false,
 };
 
 const sortValue = (r: SeasonRow, key: SeasonSortKey): number | null => {
@@ -67,14 +66,12 @@ const sortValue = (r: SeasonRow, key: SeasonSortKey): number | null => {
       return r.best?.pct ?? null;
     case 'tb':
       return r.avgTbDiff;
-    case 'streak':
-      return r.streak;
     case 'top3':
       return r.top3;
     case 'weeks':
       return r.weeks;
-    case 'net':
-      return r.netCents;
+    case 'entries':
+      return r.entries;
   }
 };
 
@@ -111,22 +108,4 @@ export const tbAvgLabel = (d: number) => `±${(Math.round(d * 10) / 10).toFixed(
 export function netLabel(cents: number): string {
   const money = formatMoney(Math.abs(cents));
   return cents > 0 ? `+${money}` : cents < 0 ? `−${money}` : money;
-}
-
-/** "Weeks 1–5", "Weeks 1–3, 5", "Week 2". */
-export function weeksCountedLabel(weekNumbers: number[]): string {
-  if (weekNumbers.length === 0) return 'No weeks';
-  const nums = [...weekNumbers].sort((a, b) => a - b);
-  const parts: string[] = [];
-  let start = nums[0];
-  let prev = nums[0];
-  for (const n of [...nums.slice(1), NaN]) {
-    if (n === prev + 1) {
-      prev = n;
-      continue;
-    }
-    parts.push(start === prev ? `${start}` : `${start}–${prev}`);
-    start = prev = n;
-  }
-  return `${nums.length === 1 ? 'Week' : 'Weeks'} ${parts.join(', ')}`;
 }

@@ -32,7 +32,7 @@ async function seedSeason(request: Parameters<typeof resetDb>[0]) {
 
 const names = (page: Page) => page.getByTestId('season-table').getByTestId('season-name');
 
-test('@smoke season stats: tab from the leaderboard, leaders, table, sorting', async ({ page, context, request }) => {
+test('@smoke season stats: tab from the leaderboard, table, sorting', async ({ page, context, request }) => {
   const { w8 } = await seedSeason(request);
   await setNow(context, FRI);
   await loginAs(page, 'cyrus');
@@ -48,30 +48,24 @@ test('@smoke season stats: tab from the leaderboard, leaders, table, sorting', a
   await expect(page.getByTestId('week-picker')).toHaveCount(0);
 
   await expect(page.getByTestId('season-title')).toHaveText('2026 Season');
-  await expect(page.getByTestId('season-through')).toHaveText('Week 7 · completed weeks, paid entries');
+  await expect(page.getByTestId('season-through')).toHaveText('Completed weeks, paid entries');
 
-  await expect(page.getByTestId('leader-wins')).toContainText('annie');
-  await expect(page.getByTestId('leader-wins')).toContainText('1 win');
-  await expect(page.getByTestId('leader-pct')).toContainText('100.0%');
-  await expect(page.getByTestId('leader-best')).toContainText('100%');
-  await expect(page.getByTestId('leader-best')).toContainText('Week 7');
-  await expect(page.getByTestId('leader-tb')).toContainText('±0.0 avg');
-  await expect(page.getByTestId('leader-streak')).toContainText('annie');
-  await expect(page.getByTestId('leader-streak')).toContainText('4 straight');
-  await expect(page.getByTestId('leader-net')).toContainText('+$20');
+  // Just the table: no leader cards, no Net or Streak column.
+  await expect(page.getByRole('region', { name: 'Season leaders' })).toHaveCount(0);
+  await expect(page.locator('[data-testid^="leader-"]')).toHaveCount(0);
+  await expect(page.getByTestId('sort-net')).toHaveCount(0);
+  await expect(page.getByTestId('sort-streak')).toHaveCount(0);
 
   // Paid entries of final weeks only: diana (unpaid) is left out; week 8 (in progress) adds nothing.
   await expect(names(page)).toHaveText(['annie', 'bobby', 'cyrus']);
   const row = (u: string) => page.getByTestId('season-table').locator('tbody tr', { hasText: u });
   await expect(row('annie').getByTestId('cell-pct')).toHaveText('100.0%');
   await expect(row('annie').getByTestId('cell-wins')).toHaveText('1');
-  await expect(row('annie').getByTestId('cell-net')).toHaveText('+$20');
   await expect(row('annie').getByTestId('cell-correct')).toHaveText('4-0');
-  await expect(row('annie').getByTestId('cell-best')).toHaveText('100% W7');
+  await expect(row('annie').getByTestId('cell-best')).toHaveText('100%');
   await expect(row('annie').getByTestId('cell-weeks')).toHaveText('1');
-  await expect(row('annie').getByTestId('cell-streak')).toHaveText('4');
+  await expect(row('annie').getByTestId('cell-entries')).toHaveText('1');
   await expect(row('bobby').getByTestId('cell-pct')).toHaveText('50.0%');
-  await expect(row('bobby').getByTestId('cell-net')).toHaveText('−$10');
   await expect(row('bobby').getByTestId('cell-tb')).toHaveText('±6.0');
   await expect(row('cyrus').getByTestId('cell-top3')).toHaveText('1');
   await expect(row('cyrus')).toContainText('YOU');
@@ -84,8 +78,10 @@ test('@smoke season stats: tab from the leaderboard, leaders, table, sorting', a
   await page.getByTestId('sort-tb').click();
   await expect(names(page)).toHaveText(['bobby', 'cyrus', 'annie']);
   await expect(page.getByRole('columnheader', { name: 'Sort by Average tiebreaker distance' })).toHaveAttribute('aria-sort', 'descending');
-  await page.getByTestId('sort-net').click();
+  await page.getByTestId('sort-pct').click();
   await expect(names(page)).toHaveText(['annie', 'bobby', 'cyrus']);
+  // No week numbers in the season stats.
+  await expect(page.getByTestId('season-table')).not.toContainText(/\bW(k|eek)? ?\d/);
 
   await expectNoPlayerCountOf(page);
 
@@ -104,6 +100,11 @@ test('@smoke player season: week by week, each entry links to its picks', async 
   await loginAs(page, 'annie');
   await page.goto('/leaderboard/season');
 
+  const bobbyRow = page.getByTestId('season-table').locator('tbody tr', { hasText: 'bobby' });
+  await expect(bobbyRow.getByTestId('cell-entries')).toHaveText('2');
+  await expect(bobbyRow.getByTestId('cell-weeks')).toHaveText('1');
+  await page.getByTestId('sort-entries').click();
+  await expect(names(page).first()).toHaveText('bobby');
   await page.getByTestId('season-table').getByRole('link', { name: 'bobby: season by week' }).click();
   await expect(page).toHaveURL(/\/leaderboard\/season\/player\/\d+\?week=\d+$/);
   await expect(page.getByTestId('page-title')).toHaveText('Leaderboard');
@@ -112,7 +113,7 @@ test('@smoke player season: week by week, each entry links to its picks', async 
   await expect(page.getByTestId('tile-wins')).toContainText('0');
   await expect(page.getByTestId('tile-net')).toContainText('−$20');
   await expect(page.getByTestId('tile-picks')).toContainText('5-3');
-  await expect(page.getByTestId('tile-best')).toContainText('75% Wk 7');
+  await expect(page.getByTestId('tile-best')).toHaveText(/Best week\s*75%$/);
   await expect(page.getByTestId('tile-tb')).toContainText('±4.5');
   await expect(page.getByTestId('tile-streak')).toContainText('2');
   await expect(page.getByTestId('tile-top3')).toContainText('1');
@@ -176,7 +177,7 @@ test('season table scrolls inside its card, never the page, on a phone', async (
   expect(after!.x).toBeCloseTo(before!.x, 0);
 });
 
-test('no money column without a fee; picking a week of another season shows that season', async ({ page, context, request }) => {
+test('picking a week of another season shows that season', async ({ page, context, request }) => {
   const w = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: '2026-09-30T20:00:00Z', results: [H, A] });
   const old = await seedWeek(request, { season: 2025, weekNumber: 18, numGames: 2, tuesday: '2026-01-01T20:00:00Z', results: [H, H] });
   await createUser(request, 'Ann', 'annie');
@@ -189,14 +190,12 @@ test('no money column without a fee; picking a week of another season shows that
 
   await page.goto('/leaderboard/season');
   await expect(page.getByTestId('season-title')).toHaveText('2026 Season');
-  await expect(page.getByTestId('sort-net')).toHaveCount(0);
-  await expect(page.getByTestId('leader-net')).toHaveCount(0);
   await expect(page.getByTestId('cell-pct')).toHaveText('50.0%');
 
   await page.getByRole('navigation', { name: 'Season' }).getByRole('link', { name: '2025' }).click();
   await expect(page).toHaveURL(new RegExp(`week=${old.weekId}$`));
   await expect(page.getByTestId('season-title')).toHaveText('2025 Season');
-  await expect(page.getByTestId('season-through')).toHaveText('Week 18 · completed weeks, paid entries');
+  await expect(page.getByTestId('season-through')).toHaveText('Completed weeks, paid entries');
   await expect(page.getByTestId('cell-pct')).toHaveText('100.0%');
 });
 

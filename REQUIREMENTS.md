@@ -1,7 +1,7 @@
 # NFL Pick'em — Requirements
 
 A lightweight, mobile-first website for a small group of friends to make weekly NFL picks.
-Each week stands alone for the pot. A separate **Season** view (Leaderboard tab, "This week | Season") shows season-long stats per player from completed weeks and paid entries: percent correct, weekly wins, net winnings, right-wrong, best week, average tiebreaker distance, longest streak of correct picks, top-3 finishes, weeks played. Tapping a player opens their week-by-week season.
+Each week stands alone for the pot. A separate **Season** view (Leaderboard tab, "This week | Season") shows season-long stats per player in one sortable table, from completed weeks and paid entries: percent correct, weekly wins, right-wrong, best week (percent), average tiebreaker distance, top-3 finishes, weeks played, entries. Tapping a player opens their week-by-week season.
 
 All times are **Pacific Time** (with daylight saving handled automatically).
 

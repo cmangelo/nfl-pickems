@@ -1,6 +1,6 @@
 import { computePot } from './pot';
 import { weekSummary, type ScoringEntry, type ScoringGame } from './scoring';
-import { compareRows, netLabel, pct0, pct1, tbAvgLabel, type BestWeek, type SeasonRow } from './season-view';
+import { compareRows, type BestWeek, type SeasonRow } from './season-view';
 
 export * from './season-view';
 
@@ -176,53 +176,6 @@ export function playerWeeks(weeks: SeasonWeekInput[], userId: number): PlayerWee
         }))
         .sort((a, b) => all.indexOf(a.entryId) - all.indexOf(b.entryId)),
     });
-  }
-  return out;
-}
-
-export interface SeasonLeader {
-  id: 'wins' | 'pct' | 'best' | 'tb' | 'streak' | 'net';
-  /** Card title, e.g. "Most wins". */
-  title: string;
-  names: string[];
-  value: string;
-  /** Small line under the value, e.g. "Week 4". */
-  sub?: string;
-}
-
-/** Holders of the best value of `pick` (ties share the card); null when nobody has one. */
-function leader(rows: SeasonRow[], pick: (r: SeasonRow) => number | null, ascending: boolean): { value: number; names: string[] } | null {
-  const vals = rows.map((r) => ({ r, v: pick(r) })).filter((x): x is { r: SeasonRow; v: number } => x.v !== null);
-  if (vals.length === 0) return null;
-  const best = ascending ? Math.min(...vals.map((x) => x.v)) : Math.max(...vals.map((x) => x.v));
-  return { value: best, names: vals.filter((x) => x.v === best).map((x) => x.r.name).sort((a, b) => a.localeCompare(b)) };
-}
-
-/**
- * Season superlatives for the cards above the table: most wins, best percent, best single week,
- * sharpest tiebreaker, longest run of correct picks and (with a pot) most money up. A card is left out when nobody qualifies
- * (no wins yet, no tiebreaker graded, nobody up).
- */
-export function seasonLeaders(stats: SeasonStats): SeasonLeader[] {
-  const { rows } = stats;
-  const out: SeasonLeader[] = [];
-  const wins = leader(rows, (r) => (r.wins > 0 ? r.wins : null), false);
-  if (wins) out.push({ id: 'wins', title: 'Most wins', names: wins.names, value: `${wins.value} ${wins.value === 1 ? 'win' : 'wins'}` });
-  const pct = leader(rows, (r) => r.pct, false);
-  if (pct) out.push({ id: 'pct', title: 'Best percent', names: pct.names, value: pct1(pct.value) });
-  const best = leader(rows, (r) => r.best?.pct ?? null, false);
-  if (best) {
-    const holders = rows.filter((r) => r.best?.pct === best.value);
-    const weeks = [...new Set(holders.map((r) => r.best!.weekNumber))].sort((a, b) => a - b);
-    out.push({ id: 'best', title: 'Best week', names: best.names, value: pct0(best.value), sub: `${weeks.length === 1 ? 'Week' : 'Weeks'} ${weeks.join(', ')}` });
-  }
-  const tb = leader(rows, (r) => r.avgTbDiff, true);
-  if (tb) out.push({ id: 'tb', title: 'Sharpest tiebreaker', names: tb.names, value: `${tbAvgLabel(tb.value)} avg` });
-  const streak = leader(rows, (r) => (r.streak > 0 ? r.streak : null), false);
-  if (streak) out.push({ id: 'streak', title: 'Hot streak', names: streak.names, value: `${streak.value} straight` });
-  if (stats.hasMoney) {
-    const net = leader(rows, (r) => (r.netCents > 0 ? r.netCents : null), false);
-    if (net) out.push({ id: 'net', title: 'Most money up', names: net.names, value: netLabel(net.value) });
   }
   return out;
 }
