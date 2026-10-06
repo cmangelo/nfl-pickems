@@ -5,7 +5,7 @@ import Avatar from '@/components/Avatar';
 import NoWeeks from '@/components/NoWeeks';
 import { requireUser } from '@/lib/auth';
 import { formatMoney } from '@/lib/pot';
-import { netLabel, pct0, pct1, tbAvgLabel } from '@/lib/season';
+import { pct0, pct1, tbAvgLabel } from '@/lib/season';
 import { getSelectedWeek } from '@/lib/selected-week';
 import { now as getNow } from '@/lib/time';
 import { isId } from '@/lib/validate';
@@ -14,7 +14,7 @@ import { rankLabel } from '@/lib/week-view';
 
 function Tile({ label, value, testId }: { label: string; value: React.ReactNode; testId: string }) {
   return (
-    <div data-testid={testId} className="rounded-xl border border-border bg-surface px-3 py-2">
+    <div data-testid={testId} className="min-w-0 rounded-xl border border-border bg-surface px-2.5 py-2">
       <div className="text-xs text-muted">{label}</div>
       <div className="text-lg font-bold tabular-nums">{value}</div>
     </div>
@@ -70,24 +70,15 @@ export default async function PlayerSeasonPage({
         </p>
       ) : (
         <>
-          <section aria-label="Season totals" className="grid grid-cols-3 gap-2">
+          <section aria-label="Season totals" className="grid grid-cols-4 gap-2">
             <Tile testId="tile-pct" label="Pct" value={r.pct === null ? '–' : pct1(r.pct)} />
             <Tile testId="tile-wins" label="Wins" value={r.wins} />
-            {p.hasMoney ? (
-              <Tile
-                testId="tile-net"
-                label="Net"
-                value={<span className={r.netCents > 0 ? 'text-correct' : r.netCents < 0 ? 'text-[#ff9c9c]' : ''}>{netLabel(r.netCents)}</span>}
-              />
-            ) : (
-              <Tile testId="tile-top3" label="Top 3" value={r.top3} />
-            )}
             <Tile testId="tile-picks" label="Picks" value={`${r.correct}-${r.graded - r.correct}`} />
-            <Tile testId="tile-best" label="Best week" value={r.best ? pct0(r.best.pct) : '–'} />
+            <Tile testId="tile-best" label="Best wk" value={r.best ? pct0(r.best.pct) : '–'} />
             <Tile testId="tile-tb" label="TB ±" value={r.avgTbDiff === null ? '–' : tbAvgLabel(r.avgTbDiff)} />
-            <Tile testId="tile-streak" label="Streak" value={r.streak} />
-            {p.hasMoney && <Tile testId="tile-top3" label="Top 3" value={r.top3} />}
+            <Tile testId="tile-top3" label="Top 3" value={r.top3} />
             <Tile testId="tile-weeks" label="Weeks" value={r.weeks} />
+            <Tile testId="tile-entries" label="Entries" value={r.entries} />
           </section>
 
           <section aria-labelledby="by-week-h">

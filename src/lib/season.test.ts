@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { ScoringEntry, ScoringGame } from './scoring';
 import {
   compareRows,
-  netLabel,
   playerWeeks,
   pct0,
   pct1,
@@ -89,7 +88,6 @@ describe('seasonStats', () => {
   it('counts final weeks only, in order, and only players with a paid entry', () => {
     expect(stats.weekNumbers).toEqual([1, 2]);
     expect(stats.rows.map((r) => r.name).sort()).toEqual(['ann', 'bob', 'cy']); // di only ever unpaid / in an unfinished week
-    expect(stats.hasMoney).toBe(true);
   });
 
   it('totals correct over graded picks; a tie is a miss and a void game is not graded', () => {
@@ -120,22 +118,8 @@ describe('seasonStats', () => {
     expect(byName('cy').avgTbDiff).toBe(9); // 12, 6
   });
 
-  it('money: fee per counted entry, pot shares split between winning entries (rounded down)', () => {
-    // Week 1 pot $30 to ann. Week 2 pot $40 over 3 winning entries: $13.33 each.
-    expect(byName('ann')).toMatchObject({ winningsCents: 3000 + 1333, feesCents: 2000, netCents: 2333 });
-    expect(byName('bob')).toMatchObject({ winningsCents: 2666, feesCents: 3000, netCents: -334 });
-    expect(byName('cy')).toMatchObject({ winningsCents: 0, feesCents: 2000, netCents: -2000 });
-  });
-
-  it('no fee => no money, but stats still count', () => {
-    const free = seasonStats([{ ...week1, feeCents: null }, { ...week2, feeCents: 0 }], names);
-    expect(free.hasMoney).toBe(false);
-    expect(free.rows.every((r) => r.netCents === 0 && r.feesCents === 0)).toBe(true);
-    expect(free.weekNumbers).toEqual([1, 2]);
-  });
-
   it('empty with no final week', () => {
-    expect(seasonStats([week3], names)).toEqual({ rows: [], weekNumbers: [], hasMoney: false });
+    expect(seasonStats([week3], names)).toEqual({ rows: [], weekNumbers: [] });
     expect(seasonStats([], names).rows).toEqual([]);
   });
 
@@ -146,27 +130,6 @@ describe('seasonStats', () => {
 
   it('default order: percent desc', () => {
     expect(stats.rows.map((r) => r.name)).toEqual(['ann', 'bob', 'cy']);
-  });
-});
-
-describe('streak', () => {
-  it('first counted entry each week, kickoff order: a tie or miss ends it', () => {
-    // ann: week 1 right, right (2); week 2 opens with a tie. bob (first entry): 1, then 1 again in week 2. cy never.
-    expect([byName('ann').streak, byName('bob').streak, byName('cy').streak]).toEqual([2, 1, 0]);
-  });
-  it('carries across weeks, skips void games and survives a week sat out', () => {
-    const wA: SeasonWeekInput = { weekId: 21, weekNumber: 1, games: [fin(10, SUN, 20, 10), fin(11, MON, 21, 3)], entries: [entry(1, { 10: H, 11: H })], tiebreakerGameId: 11, feeCents: null };
-    const wB: SeasonWeekInput = { weekId: 22, weekNumber: 2, games: [fin(15, SUN, 20, 10)], entries: [entry(2, { 15: H })], tiebreakerGameId: 15, feeCents: null };
-    const wC: SeasonWeekInput = {
-      weekId: 23,
-      weekNumber: 3,
-      games: [fin(12, SUN, 20, 10), { ...fin(13, SUN, 0, 0), status: 'void', winner: null }, fin(14, MON, 30, 3), fin(16, MON, 3, 30)],
-      entries: [entry(1, { 12: H, 13: A, 14: H, 16: H })],
-      tiebreakerGameId: 16,
-      feeCents: null,
-    };
-    const s = seasonStats([wC, wA, wB], names);
-    expect(s.rows.find((r) => r.name === 'ann')!.streak).toBe(4); // 10, 11, (week 2 sat out), 12, (13 void), 14; then 16 missed
   });
 });
 
@@ -210,10 +173,6 @@ describe('compareRows', () => {
     wins: 0,
     top3: 0,
     avgTbDiff: null,
-    winningsCents: 0,
-    feesCents: 0,
-    netCents: 0,
-    streak: 0,
     ...over,
   });
   const a = row('a', { wins: 2, avgTbDiff: 5 });
@@ -241,13 +200,10 @@ describe('compareRows', () => {
 });
 
 describe('labels', () => {
-  it('percent, tiebreaker, net money', () => {
+  it('percent and tiebreaker', () => {
     expect(pct1(0.6842)).toBe('68.4%');
     expect(pct1(1)).toBe('100.0%');
     expect(pct0(0.9375)).toBe('94%');
     expect(tbAvgLabel(3.25)).toBe('±3.3');
-    expect(netLabel(3000)).toBe('+$30');
-    expect(netLabel(-334)).toBe('−$3.34');
-    expect(netLabel(0)).toBe('$0');
   });
 });

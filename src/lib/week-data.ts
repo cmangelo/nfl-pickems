@@ -68,7 +68,6 @@ export interface PlayerSeason {
   /** Their season row, null when they have no counted entry in a final week. */
   row: SeasonRow | null;
   weeks: PlayerWeek[];
-  hasMoney: boolean;
 }
 
 /** One player's season: their row of the season table plus a week-by-week breakdown. */
@@ -83,6 +82,5 @@ export async function loadPlayerSeason(season: number, userId: number, now: Date
     username: user?.username ?? null,
     row: stats.rows.find((r) => r.userId === userId) ?? null,
     weeks: playerWeeks(inputs, userId),
-    hasMoney: stats.hasMoney,
   };
 }

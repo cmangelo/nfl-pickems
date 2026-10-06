@@ -1,5 +1,3 @@
-import { formatMoney } from './pot';
-
 /** Season stats types, sort order and labels (pure, client-safe: no server imports). Computed in season.ts. */
 
 export interface BestWeek {
@@ -31,13 +29,6 @@ export interface SeasonRow {
   top3: number;
   /** Mean |tiebreaker guess - actual total| over counted entries whose tiebreaker game finished with a score. */
   avgTbDiff: number | null;
-  /** Pot shares won (co-winners split, rounded down to the cent). */
-  winningsCents: number;
-  /** Fees for this player's counted entries. */
-  feesCents: number;
-  netCents: number;
-  /** Longest run of correct picks in kickoff order (first counted entry each week; ties end it, voids skipped). */
-  streak: number;
 }
 
 export type SeasonSortKey = 'pct' | 'wins' | 'correct' | 'best' | 'tb' | 'top3' | 'weeks' | 'entries';
@@ -103,9 +94,3 @@ export const pct1 = (p: number) => `${(Math.round(p * 1000) / 10).toFixed(1)}%`;
 export const pct0 = (p: number) => `${Math.round(p * 100)}%`;
 /** "±3.5" average tiebreaker distance. */
 export const tbAvgLabel = (d: number) => `±${(Math.round(d * 10) / 10).toFixed(1)}`;
-
-/** "+$30", "−$10", "$0". */
-export function netLabel(cents: number): string {
-  const money = formatMoney(Math.abs(cents));
-  return cents > 0 ? `+${money}` : cents < 0 ? `−${money}` : money;
-}

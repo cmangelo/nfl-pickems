@@ -111,11 +111,14 @@ test('@smoke player season: week by week, each entry links to its picks', async 
   await expect(page.getByTestId('player-season-heading')).toHaveText('bobby');
   await expect(page.getByTestId('tile-pct')).toContainText('62.5%');
   await expect(page.getByTestId('tile-wins')).toContainText('0');
-  await expect(page.getByTestId('tile-net')).toContainText('−$20');
   await expect(page.getByTestId('tile-picks')).toContainText('5-3');
-  await expect(page.getByTestId('tile-best')).toHaveText(/Best week\s*75%$/);
+  await expect(page.getByTestId('tile-best')).toHaveText(/Best wk\s*75%$/);
   await expect(page.getByTestId('tile-tb')).toContainText('±4.5');
-  await expect(page.getByTestId('tile-streak')).toContainText('2');
+  await expect(page.getByTestId('tile-entries')).toContainText('2');
+  await expect(page.getByTestId('tile-weeks')).toContainText('1');
+  // No Net or Streak on the player page.
+  await expect(page.getByTestId('tile-net')).toHaveCount(0);
+  await expect(page.getByTestId('tile-streak')).toHaveCount(0);
   await expect(page.getByTestId('tile-top3')).toContainText('1');
 
   const rows = page.getByTestId('player-week-7');

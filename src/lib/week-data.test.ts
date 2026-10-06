@@ -64,10 +64,9 @@ describe('loadSeasonStats', () => {
 
     const s = await loadSeasonStats(2026, d('2026-10-09T20:00:00Z'));
     expect(s.weekNumbers).toEqual([4, 5]);
-    expect(s.hasMoney).toBe(true);
     const by = Object.fromEntries(s.rows.map((r) => [r.name, r]));
     expect(Object.keys(by).sort()).toEqual(['annie99', 'bobcat']);
-    expect(by.annie99).toMatchObject({ correct: 2, graded: 4, wins: 1, weeks: 2, winningsCents: 1000, feesCents: 1000, netCents: 0 });
+    expect(by.annie99).toMatchObject({ correct: 2, graded: 4, wins: 1, weeks: 2, entries: 2 });
     expect(by.bobcat).toMatchObject({ correct: 2, graded: 4, wins: 1, weeks: 2 });
 
     const p = await loadPlayerSeason(2026, ann.id, d('2026-10-09T20:00:00Z'));

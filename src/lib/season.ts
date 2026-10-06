@@ -24,8 +24,6 @@ export interface SeasonStats {
   rows: SeasonRow[];
   /** Completed weeks counted, ascending. */
   weekNumbers: number[];
-  /** Some counted week had a fee: show the money columns. */
-  hasMoney: boolean;
 }
 
 /**
@@ -33,8 +31,7 @@ export interface SeasonStats {
  * Rows come sorted by the default season order (`compareRows(..., 'pct')`).
  */
 export function seasonStats(weeks: SeasonWeekInput[], names: Map<number, string>): SeasonStats {
-  // run = the current streak of correct picks, carried from week to week.
-  const rows = new Map<number, SeasonRow & { tbSum: number; tbCount: number; run: number }>();
+  const rows = new Map<number, SeasonRow & { tbSum: number; tbCount: number }>();
   const row = (userId: number) => {
     let r = rows.get(userId);
     if (!r) {
@@ -50,13 +47,8 @@ export function seasonStats(weeks: SeasonWeekInput[], names: Map<number, string>
         wins: 0,
         top3: 0,
         avgTbDiff: null,
-        winningsCents: 0,
-        feesCents: 0,
-        netCents: 0,
-        streak: 0,
         tbSum: 0,
         tbCount: 0,
-        run: 0,
       };
       rows.set(userId, r);
     }
@@ -64,14 +56,10 @@ export function seasonStats(weeks: SeasonWeekInput[], names: Map<number, string>
   };
 
   const weekNumbers: number[] = [];
-  let hasMoney = false;
   for (const w of [...weeks].sort((a, b) => a.weekNumber - b.weekNumber)) {
     const summary = weekSummary(w.games, w.entries, { tiebreakerGameId: w.tiebreakerGameId });
     if (!summary.isFinal || summary.ranked.length === 0) continue;
     weekNumbers.push(w.weekNumber);
-    const pot = computePot(w.feeCents, summary.ranked.length);
-    if (pot) hasMoney = true;
-    const share = pot && summary.winners.length > 0 ? Math.floor(pot.totalCents / summary.winners.length) : 0;
     const played = new Set<number>();
     const won = new Set<number>();
     const podium = new Set<number>();
@@ -81,11 +69,7 @@ export function seasonStats(weeks: SeasonWeekInput[], names: Map<number, string>
       r.entries++;
       r.correct += e.correct;
       r.graded += e.correct + e.wrong;
-      if (pot) r.feesCents += pot.feeCents;
-      if (e.rank === 1) {
-        won.add(e.userId);
-        r.winningsCents += share;
-      }
+      if (e.rank === 1) won.add(e.userId);
       if (e.rank <= 3) podium.add(e.userId);
       if (e.tiebreakerDiff !== null) {
         r.tbSum += e.tiebreakerDiff;
@@ -98,36 +82,19 @@ export function seasonStats(weeks: SeasonWeekInput[], names: Map<number, string>
         if (!r.best || cand.pct > r.best.pct || (cand.pct === r.best.pct && cand.correct > r.best.correct)) r.best = cand;
       }
     }
-    // Streak: the player's first counted entry each week, games in kickoff order; a miss or tie ends it,
-    // a void game is skipped, and a week sat out leaves it running.
-    const ordered = playable(w.games);
-    for (const id of played) {
-      const r = row(id);
-      const first = summary.ranked.filter((e) => e.userId === id).reduce((a, b) => (b.entryId < a.entryId ? b : a));
-      for (const g of ordered) {
-        r.run = g.winner !== 'tie' && first.picks[g.id] === g.winner ? r.run + 1 : 0;
-        r.streak = Math.max(r.streak, r.run);
-      }
-    }
     for (const id of played) row(id).weeks++;
     for (const id of won) row(id).wins++;
     for (const id of podium) row(id).top3++;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const out: SeasonRow[] = [...rows.values()].map(({ tbSum, tbCount, run, ...r }) => ({
+  const out: SeasonRow[] = [...rows.values()].map(({ tbSum, tbCount, ...r }) => ({
     ...r,
     pct: r.graded > 0 ? r.correct / r.graded : null,
     avgTbDiff: tbCount > 0 ? tbSum / tbCount : null,
-    netCents: r.winningsCents - r.feesCents,
   }));
   out.sort((a, b) => compareRows(a, b, 'pct'));
-  return { rows: out, weekNumbers, hasMoney };
+  return { rows: out, weekNumbers };
 }
-
-/** Non-void games in kickoff order. */
-const playable = (games: ScoringGame[]) =>
-  games.filter((g) => g.status !== 'void').sort((a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime() || a.id - b.id);
 
 export interface PlayerWeekEntry {
   entryId: number;
