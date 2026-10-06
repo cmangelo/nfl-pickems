@@ -58,6 +58,40 @@ test('@smoke open week: pick every game, submit, reload prefilled, edit and resu
   expect(weekId).toBeGreaterThan(0);
 });
 
+test('tapping the picked team again clears that pick', async ({ page, context, request }) => {
+  const { gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 3, tuesday: WED });
+  await setNow(context, WED);
+  await loginAs(page, 'admin');
+  await page.goto('/picks');
+
+  for (const id of gameIds) await page.getByTestId(`pick-${id}-home`).click();
+  await page.getByLabel(/Total points in/).fill('45');
+  await page.getByRole('button', { name: 'Submit picks' }).click();
+  await expect(page.getByRole('status')).toContainText('Picks saved.');
+
+  const home = page.getByTestId(`pick-${gameIds[1]}-home`);
+  await home.click();
+  await expect(home).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId(`pick-${gameIds[1]}-away`)).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('progress')).toContainText('2/3 picked');
+  const submit = page.getByRole('button', { name: 'Pick 1 more' });
+  await expect(submit).toBeDisabled();
+
+  // Tap again to pick it back: the form matches the saved entry, so nothing is unsaved.
+  await home.click();
+  await expect(home).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('progress')).toHaveText('3/3 picked');
+  await expect(page.getByTestId('unsaved')).toHaveCount(0);
+
+  // Clearing then picking the other side still saves normally.
+  await home.click();
+  await page.getByTestId(`pick-${gameIds[1]}-away`).click();
+  await page.getByRole('button', { name: 'Update picks' }).click();
+  await expect(page.getByRole('status')).toContainText('Picks saved.');
+  await page.reload();
+  await expect(page.getByTestId(`pick-${gameIds[1]}-away`)).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('open week: a pick made after lock is rejected with the server error', async ({ page, context, request }) => {
   const { gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED });
   await setNow(context, '2026-10-08T18:59:00Z'); // 1 minute before lock

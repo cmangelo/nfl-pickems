@@ -9,6 +9,14 @@ import type { Side } from './scoring';
 
 const PREFIX = 'pickems:draft:v1';
 
+/** Tap a team: picks it, or clears that game's pick when the team was already picked. */
+export function togglePick(picks: Record<number, Side>, gameId: number, side: Side): Record<number, Side> {
+  if (picks[gameId] !== side) return { ...picks, [gameId]: side };
+  const next = { ...picks };
+  delete next[gameId];
+  return next;
+}
+
 export interface DraftState {
   picks: Record<number, Side>;
   /** Raw tiebreaker input ("" when empty). */

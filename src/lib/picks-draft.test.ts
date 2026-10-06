@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { draftKey, draftKeyWeek, makeDraft, readDraft, serializeDraftState } from './picks-draft';
+import { draftKey, draftKeyWeek, makeDraft, readDraft, serializeDraftState, togglePick } from './picks-draft';
 
 const saved = serializeDraftState({ picks: { 1: 'home', 2: 'away' }, tb: '41' });
 const ids = [1, 2, 3];
@@ -54,5 +54,20 @@ describe('readDraft', () => {
     expect(readDraft('null', saved, ids)).toBeNull();
     expect(readDraft(JSON.stringify({ v: 2, base: saved, picks: {}, tb: '' }), saved, ids)).toBeNull();
     expect(readDraft(JSON.stringify({ v: 1, base: saved, picks: [], tb: 5 }), saved, ids)).toBeNull();
+  });
+});
+
+describe('togglePick', () => {
+  it('picks a team, switches sides, and clears when the picked team is tapped again', () => {
+    const start = { 1: 'home' as const };
+    expect(togglePick(start, 2, 'away')).toEqual({ 1: 'home', 2: 'away' });
+    expect(togglePick(start, 1, 'away')).toEqual({ 1: 'away' });
+    expect(togglePick(start, 1, 'home')).toEqual({});
+    expect(start).toEqual({ 1: 'home' });
+  });
+  it('a cleared form serializes like one that never had the pick', () => {
+    expect(serializeDraftState({ picks: togglePick({ 1: 'home', 2: 'away' }, 2, 'away'), tb: '' })).toBe(
+      serializeDraftState({ picks: { 1: 'home' }, tb: '' }),
+    );
   });
 });
