@@ -1,7 +1,10 @@
 import Link from 'next/link';
-import { avatarColors, initial, pickResults, tiebreakerDiffLabel, type PickResult } from '@/lib/leaderboard-view';
+import Avatar from '@/components/Avatar';
+import { pickResults, tiebreakerDiffLabel, type PickResult } from '@/lib/leaderboard-view';
 import type { RankedEntry, ScoredEntry, ScoringGame } from '@/lib/scoring';
 import { rankLabel } from '@/lib/week-view';
+
+export { Avatar };
 
 const href = (e: { userId: number; entryId: number }, weekId: number) =>
   `/leaderboard/player/${e.userId}?week=${weekId}&entry=${e.entryId}`;
@@ -14,19 +17,6 @@ const DOT: Record<PickResult, string> = {
   void: 'bg-border',
   none: 'bg-border',
 };
-
-export function Avatar({ userId, name, size = 36 }: { userId: number; name: string; size?: number }) {
-  const { bg, fg } = avatarColors(userId);
-  return (
-    <span
-      aria-hidden="true"
-      className="flex shrink-0 items-center justify-center rounded-full font-bold"
-      style={{ width: size, height: size, background: bg, color: fg, fontSize: size * 0.44 }}
-    >
-      {initial(name)}
-    </span>
-  );
-}
 
 /** One small mark per game (kickoff order): green right, red wrong, grey tie/void, outline still to play. */
 function PickStrip({ games, picks }: { games: ScoringGame[]; picks: ScoredEntry['picks'] }) {

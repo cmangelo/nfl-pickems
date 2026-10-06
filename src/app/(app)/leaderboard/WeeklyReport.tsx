@@ -135,7 +135,7 @@ function GameCard({
   );
 }
 
-function AwardCard({
+export function AwardCard({
   testId,
   icon: Icon,
   label,

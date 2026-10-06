@@ -12,6 +12,7 @@ import { formatPT, now as getNow } from '@/lib/time';
 import { effectiveLock, resolveTiebreakerGame } from '@/lib/weeks';
 import { loadEntryFee, loadWeekSummary } from '@/lib/week-data';
 import { entryLabel } from '@/lib/week-view';
+import LeaderboardTabs from './LeaderboardTabs';
 import { NotCounted, RankedTable } from './RankedTable';
 import RefreshButton from './RefreshButton';
 import WeeklyReport from './WeeklyReport';
@@ -28,10 +29,11 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const { week, games, state } = sel;
   if (!week || !state)
     return (
-      <>
-        <h1 className="mb-3 text-2xl font-bold">Leaderboard</h1>
+      <div className="flex flex-col gap-4">
+        <LeaderboardTabs active="week" weekId={null} />
+        <h1 className="text-2xl font-bold">Leaderboard</h1>
         <NoWeeks />
-      </>
+      </div>
     );
 
   const fee = await loadEntryFee(week);
@@ -40,6 +42,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
     const openPot = computePot(fee?.cents, entries.filter((e) => e.paid).length);
     return (
       <div className="flex flex-col gap-4">
+        <LeaderboardTabs active="week" weekId={week.id} />
         <h1 className="sr-only">Leaderboard</h1>
         {openPot && <PotCard pot={openPot} open />}
         <RevealedCard
@@ -64,6 +67,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
     const last = await getLastSyncedAt();
     return (
       <div className="flex flex-col gap-4">
+        <LeaderboardTabs active="week" weekId={week.id} />
         <h1 className="sr-only">Leaderboard</h1>
         <div className="flex items-start justify-between gap-3">
           <p data-testid="live-status" className="text-sm text-muted">
@@ -105,6 +109,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   );
   return (
     <div className="flex flex-col gap-4">
+      <LeaderboardTabs active="week" weekId={week.id} />
       <WeeklyReport weekNumber={week.weekNumber} summary={summary} report={report} games={games} pot={pot} gamesText={gamesText} />
       <RankedTable ranked={summary.ranked} games={games} weekId={week.id} viewerId={user.id} showDiff={tbFinal} tbLabel={tbLabel} />
       {tbFinal && (

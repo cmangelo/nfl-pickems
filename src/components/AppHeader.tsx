@@ -28,7 +28,9 @@ export default function AppHeader({
   const week = weeks.find((w) => w.id === id) ?? null;
   const open = pathname === '/weeks';
   const from = open ? safeFrom(params.get('from')) : pathname;
-  const hideWeek = pathname === '/admin/players';
+  // Pages not tied to one week show a title instead of the week picker.
+  const title = pathname === '/admin/players' ? 'Admin' : pathname === '/leaderboard/season' ? 'Leaderboard' : null;
+  const hideWeek = title !== null;
   // The picker is a page: tapping the button while it is open closes it (back to where it was opened from).
   const href = open
     ? week ? `${from}?week=${week.id}` : from
@@ -37,8 +39,8 @@ export default function AppHeader({
   return (
     <header className="flex h-[calc(60px+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b border-border pl-1.5 pr-3 pt-[env(safe-area-inset-top)]">
       {hideWeek ? (
-        <span className="px-2 text-[28px] font-bold" data-testid="admin-title">
-          Admin
+        <span className="px-2 text-[28px] font-bold" data-testid={title === 'Admin' ? 'admin-title' : 'page-title'}>
+          {title}
         </span>
       ) : (
         <Link
