@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { RotateCcw } from 'lucide-react';
 import TeamLogo from '@/components/TeamLogo';
-import { draftKeyWeek, makeDraft, readDraft, serializeDraftState } from '@/lib/picks-draft';
+import { draftKeyWeek, makeDraft, readDraft, serializeDraftState, togglePick } from '@/lib/picks-draft';
 import type { Side } from '@/lib/scoring';
 import { submitPicksAction, type SubmitState } from './actions';
 
@@ -172,7 +172,7 @@ export default function PicksForm({
           : 'Submit picks';
 
   const choose = (id: number, side: Side) => {
-    setPicks((p) => ({ ...p, [id]: side }));
+    setPicks((p) => togglePick(p, id, side));
     setSaved(false);
     setConfirmClear(false);
   };
