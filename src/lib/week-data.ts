@@ -1,10 +1,11 @@
 import { getDb } from '@/db';
-import { weeks } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { users, weeks } from '@/db/schema';
 import { listEntries } from './picks';
 import { entryLabel } from './week-view';
 import { effectiveEntryFee, type EffectiveFee } from './pot';
 import { weekSummary, type ScoringGame, type WeekSummary } from './scoring';
-import { seasonStats, type SeasonStats } from './season';
+import { playerWeeks, seasonStats, type PlayerWeek, type SeasonRow, type SeasonStats, type SeasonWeekInput } from './season';
 import { loadVisibleWeeks } from './selected-week';
 import { resolveTiebreakerGame, type WeekRow } from './weeks';
 
@@ -29,11 +30,8 @@ export async function loadEntryFee(week: Pick<WeekRow, 'season' | 'weekNumber'>)
   return effectiveEntryFee(rows, week);
 }
 
-/**
- * Season stats for `season`: every visible week of that season that is final at `now`, over paid entries.
- * Players are named by username, as on the leaderboard.
- */
-export async function loadSeasonStats(season: number, now: Date): Promise<SeasonStats> {
+/** Inputs for season stats: every visible week of `season` that is final at `now`, plus usernames by user id. */
+async function loadSeasonInputs(season: number, now: Date): Promise<{ inputs: SeasonWeekInput[]; names: Map<number, string> }> {
   const db = await getDb();
   const [visible, feeRows] = await Promise.all([
     loadVisibleWeeks(now),
@@ -55,5 +53,38 @@ export async function loadSeasonStats(season: number, now: Date): Promise<Season
       };
     }),
   );
+  return { inputs, names };
+}
+
+/** Season stats for `season` over its final weeks and paid entries. Players are named by username, as on the leaderboard. */
+export async function loadSeasonStats(season: number, now: Date): Promise<SeasonStats> {
+  const { inputs, names } = await loadSeasonInputs(season, now);
   return seasonStats(inputs, names);
+}
+
+export interface PlayerSeason {
+  /** null when the user does not exist. */
+  username: string | null;
+  /** Their season row, null when they have no counted entry in a final week. */
+  row: SeasonRow | null;
+  weeks: PlayerWeek[];
+  hasMoney: boolean;
+  weekNumbers: number[];
+}
+
+/** One player's season: their row of the season table plus a week-by-week breakdown. */
+export async function loadPlayerSeason(season: number, userId: number, now: Date): Promise<PlayerSeason> {
+  const db = await getDb();
+  const [{ inputs, names }, [user]] = await Promise.all([
+    loadSeasonInputs(season, now),
+    db.select({ username: users.username }).from(users).where(eq(users.id, userId)),
+  ]);
+  const stats = seasonStats(inputs, names);
+  return {
+    username: user?.username ?? null,
+    row: stats.rows.find((r) => r.userId === userId) ?? null,
+    weeks: playerWeeks(inputs, userId),
+    hasMoney: stats.hasMoney,
+    weekNumbers: stats.weekNumbers,
+  };
 }

@@ -3,6 +3,7 @@ import type { ScoringEntry, ScoringGame } from './scoring';
 import {
   compareRows,
   netLabel,
+  playerWeeks,
   pct0,
   pct1,
   seasonLeaders,
@@ -150,6 +151,47 @@ describe('seasonStats', () => {
   });
 });
 
+describe('streak', () => {
+  it('first counted entry each week, kickoff order: a tie or miss ends it', () => {
+    // ann: week 1 right, right (2); week 2 opens with a tie. bob (first entry): 1, then 1 again in week 2. cy never.
+    expect([byName('ann').streak, byName('bob').streak, byName('cy').streak]).toEqual([2, 1, 0]);
+  });
+  it('carries across weeks, skips void games and survives a week sat out', () => {
+    const wA: SeasonWeekInput = { weekId: 21, weekNumber: 1, games: [fin(10, SUN, 20, 10), fin(11, MON, 21, 3)], entries: [entry(1, { 10: H, 11: H })], tiebreakerGameId: 11, feeCents: null };
+    const wB: SeasonWeekInput = { weekId: 22, weekNumber: 2, games: [fin(15, SUN, 20, 10)], entries: [entry(2, { 15: H })], tiebreakerGameId: 15, feeCents: null };
+    const wC: SeasonWeekInput = {
+      weekId: 23,
+      weekNumber: 3,
+      games: [fin(12, SUN, 20, 10), { ...fin(13, SUN, 0, 0), status: 'void', winner: null }, fin(14, MON, 30, 3), fin(16, MON, 3, 30)],
+      entries: [entry(1, { 12: H, 13: A, 14: H, 16: H })],
+      tiebreakerGameId: 16,
+      feeCents: null,
+    };
+    const s = seasonStats([wC, wA, wB], names);
+    expect(s.rows.find((r) => r.name === 'ann')!.streak).toBe(4); // 10, 11, (week 2 sat out), 12, (13 void), 14; then 16 missed
+  });
+});
+
+describe('playerWeeks', () => {
+  it('newest first, final weeks with a counted entry, finish, score, tiebreaker and payout per entry', () => {
+    expect(playerWeeks([week3, week2, week1], 2)).toEqual([
+      {
+        weekId: 12,
+        weekNumber: 2,
+        entries: [
+          { entryId: week2.entries[1].entryId, label: 'Entry 1', rank: 1, tied: true, correct: 1, total: 3, tbDiff: 0, payoutCents: 1333 },
+          { entryId: week2.entries[2].entryId, label: 'Entry 2', rank: 1, tied: true, correct: 1, total: 3, tbDiff: 0, payoutCents: 1333 },
+        ],
+      },
+      { weekId: 11, weekNumber: 1, entries: [{ entryId: week1.entries[1].entryId, label: null, rank: 2, tied: false, correct: 1, total: 2, tbDiff: 0, payoutCents: 0 }] },
+    ]);
+  });
+  it('skips weeks in progress and unpaid-only weeks', () => {
+    expect(playerWeeks([week3, week2, week1], 3).map((w) => w.weekNumber)).toEqual([2, 1]);
+    expect(playerWeeks([week3, week2, week1], 4)).toEqual([]);
+  });
+});
+
 describe('top 3 detail', () => {
   it('cy is 3rd in week 1 and 4th in week 2', () => {
     // Week 2 ranks: ann, bob(1), bob(2) all 1/3 with diff 0 => T-1st; cy 0/3 => 4th.
@@ -173,6 +215,7 @@ describe('compareRows', () => {
     winningsCents: 0,
     feesCents: 0,
     netCents: 0,
+    streak: 0,
     ...over,
   });
   const a = row('a', { wins: 2, avgTbDiff: 5 });
@@ -200,14 +243,15 @@ describe('seasonLeaders', () => {
     expect(seasonLeaders(stats)).toEqual([
       { id: 'wins', title: 'Most wins', names: ['ann'], value: '2 wins' },
       { id: 'pct', title: 'Best percent', names: ['ann'], value: '60.0%' },
-      { id: 'best', title: 'Best week', names: ['ann'], value: '100% · Wk 1' },
+      { id: 'best', title: 'Best week', names: ['ann'], value: '100%', sub: 'Week 1' },
       { id: 'tb', title: 'Sharpest tiebreaker', names: ['bob'], value: '±0.0 avg' },
+      { id: 'streak', title: 'Hot streak', names: ['ann'], value: '2 straight' },
       { id: 'net', title: 'Most money up', names: ['ann'], value: '+$23.33' },
     ]);
   });
   it('drops cards nobody qualifies for', () => {
     const free = seasonStats([{ ...week1, feeCents: null }], names);
-    expect(seasonLeaders(free).map((l) => l.title)).toEqual(['Most wins', 'Best percent', 'Best week', 'Sharpest tiebreaker']);
+    expect(seasonLeaders(free).map((l) => l.title)).toEqual(['Most wins', 'Best percent', 'Best week', 'Sharpest tiebreaker', 'Hot streak']);
     expect(seasonLeaders({ rows: [], weekNumbers: [], hasMoney: false })).toEqual([]);
   });
 });

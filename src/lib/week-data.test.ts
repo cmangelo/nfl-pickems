@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { getDb } from '@/db';
 import { users } from '@/db/schema';
 import { freshDb, makeEntry, makeWeek } from './testing/helpers';
-import { loadSeasonStats, loadWeekSummary } from './week-data';
+import { loadPlayerSeason, loadSeasonStats, loadWeekSummary } from './week-data';
 import { weeks } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -69,5 +69,15 @@ describe('loadSeasonStats', () => {
     expect(Object.keys(by).sort()).toEqual(['annie99', 'bobcat']);
     expect(by.annie99).toMatchObject({ correct: 2, graded: 4, wins: 1, weeks: 2, winningsCents: 1000, feesCents: 1000, netCents: 0 });
     expect(by.bobcat).toMatchObject({ correct: 2, graded: 4, wins: 1, weeks: 2 });
+
+    const p = await loadPlayerSeason(2026, ann.id, d('2026-10-09T20:00:00Z'));
+    expect(p.username).toBe('annie99');
+    expect(p.row).toMatchObject({ correct: 2, wins: 1 });
+    expect(p.weeks.map((w) => [w.weekNumber, w.entries[0].rank, w.entries[0].payoutCents])).toEqual([
+      [5, 2, 0],
+      [4, 1, 1000],
+    ]);
+    const nobody = await loadPlayerSeason(2026, 9999, d('2026-10-09T20:00:00Z'));
+    expect(nobody).toMatchObject({ username: null, row: null, weeks: [] });
   });
 });

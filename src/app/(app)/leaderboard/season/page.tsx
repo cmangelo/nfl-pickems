@@ -1,10 +1,12 @@
 import Link from 'next/link';
-import { Banknote, CalendarCheck, Percent, Target, Trophy, type LucideIcon } from 'lucide-react';
+import { Banknote, CalendarCheck, Flame, Percent, Target, Trophy, type LucideIcon } from 'lucide-react';
 import NoWeeks from '@/components/NoWeeks';
 import { requireUser } from '@/lib/auth';
 import { joinNames } from '@/lib/leaderboard-view';
 import { seasonLeaders, weeksCountedLabel, type SeasonLeader } from '@/lib/season';
 import { getSelectedWeek } from '@/lib/selected-week';
+import { refreshWithBudget } from '@/lib/sync';
+import { now as getNow } from '@/lib/time';
 import { loadSeasonStats } from '@/lib/week-data';
 import LeaderboardTabs from '../LeaderboardTabs';
 import { AwardCard } from '../WeeklyReport';
@@ -15,13 +17,20 @@ const LEADER_STYLE: Record<SeasonLeader['id'], { icon: LucideIcon; tone: string 
   pct: { icon: Percent, tone: 'var(--correct)' },
   best: { icon: CalendarCheck, tone: '#60a5fa' },
   tb: { icon: Target, tone: '#c084fc' },
+  streak: { icon: Flame, tone: '#fb923c' },
   net: { icon: Banknote, tone: 'var(--correct)' },
 };
 
 export default async function SeasonPage({ searchParams }: { searchParams: Promise<{ week?: string | string[] }> }) {
   const user = await requireUser();
   const { week: weekParam } = await searchParams;
-  const sel = await getSelectedWeek(weekParam);
+  const t = await getNow();
+  let sel = await getSelectedWeek(weekParam, t);
+  // A week of this season still in progress may have just finished: refresh-on-view, as the live board does.
+  if (sel.week && sel.visibleWeeks.some((v) => v.week.season === sel.week!.season && v.state === 'locked')) {
+    await refreshWithBudget(t);
+    sel = await getSelectedWeek(weekParam, t);
+  }
   const { week } = sel;
   if (!week)
     return (
@@ -74,11 +83,11 @@ export default async function SeasonPage({ searchParams }: { searchParams: Promi
           {leaders.length > 0 && (
             <section aria-label="Season leaders" className="grid grid-cols-2 gap-2">
               {leaders.map((l) => (
-                <AwardCard key={l.id} testId={`leader-${l.id}`} icon={LEADER_STYLE[l.id].icon} tone={LEADER_STYLE[l.id].tone} label={l.title} names={joinNames(l.names)} value={l.value} />
+                <AwardCard key={l.id} testId={`leader-${l.id}`} icon={LEADER_STYLE[l.id].icon} tone={LEADER_STYLE[l.id].tone} label={l.title} names={joinNames(l.names)} value={l.value} sub={l.sub} />
               ))}
             </section>
           )}
-          <SeasonTable rows={stats.rows} viewerId={user.id} hasMoney={stats.hasMoney} />
+          <SeasonTable rows={stats.rows} viewerId={user.id} hasMoney={stats.hasMoney} weekId={week.id} />
           <dl data-testid="season-legend" className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-muted">
             <dt className="font-semibold">Pct</dt>
             <dd>Correct picks over graded games (a tied game counts as a miss; void games don&apos;t count).</dd>
@@ -96,10 +105,12 @@ export default async function SeasonPage({ searchParams }: { searchParams: Promi
             <dd>Highest percent correct in a single week.</dd>
             <dt className="font-semibold">TB ±</dt>
             <dd>Average distance of the tiebreaker guess from the actual total.</dd>
+            <dt className="font-semibold">Streak</dt>
+            <dd>Longest run of correct picks in a row, across weeks (a player&apos;s first entry each week).</dd>
             <dt className="font-semibold">Top 3 · Wks</dt>
             <dd>Weeks finished in the top 3 · weeks played.</dd>
           </dl>
-          <p className="text-xs text-muted">Tap a column to sort. Players with several entries in a week have every entry counted.</p>
+          <p className="text-xs text-muted">Tap a column to sort, or a player for their week-by-week results. Players with several entries in a week have every entry counted.</p>
         </>
       )}
     </div>

@@ -36,9 +36,11 @@ export interface SeasonRow {
   /** Fees for this player's counted entries. */
   feesCents: number;
   netCents: number;
+  /** Longest run of correct picks in kickoff order (first counted entry each week; ties end it, voids skipped). */
+  streak: number;
 }
 
-export type SeasonSortKey = 'pct' | 'wins' | 'correct' | 'best' | 'tb' | 'top3' | 'weeks' | 'net';
+export type SeasonSortKey = 'pct' | 'wins' | 'correct' | 'best' | 'tb' | 'streak' | 'top3' | 'weeks' | 'net';
 
 /** Each key's natural direction: lower is better only for the tiebreaker distance. */
 export const SORT_ASCENDING: Record<SeasonSortKey, boolean> = {
@@ -47,6 +49,7 @@ export const SORT_ASCENDING: Record<SeasonSortKey, boolean> = {
   correct: false,
   best: false,
   tb: true,
+  streak: false,
   top3: false,
   weeks: false,
   net: false,
@@ -64,6 +67,8 @@ const sortValue = (r: SeasonRow, key: SeasonSortKey): number | null => {
       return r.best?.pct ?? null;
     case 'tb':
       return r.avgTbDiff;
+    case 'streak':
+      return r.streak;
     case 'top3':
       return r.top3;
     case 'weeks':
