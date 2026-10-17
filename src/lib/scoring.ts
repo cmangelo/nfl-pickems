@@ -201,19 +201,33 @@ export function eliminatedEntryIds(games: ScoringGame[], entries: ScoringEntry[]
   return out;
 }
 
+/**
+ * Within each shared rank, moves OUT entries below the ones still alive (stable otherwise). Ranks are unchanged:
+ * an OUT entry level on correct still shows "T-2nd", it just lists after the T-2nd entries that can still win.
+ */
+export function orderOutLast(ranked: RankedEntry[], eliminated: number[]): RankedEntry[] {
+  if (eliminated.length === 0) return ranked;
+  const out = new Set(eliminated);
+  return ranked
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => a.e.rank - b.e.rank || Number(out.has(a.e.entryId)) - Number(out.has(b.e.entryId)) || a.i - b.i)
+    .map(({ e }) => e);
+}
+
 export function weekSummary(
   games: ScoringGame[],
   entries: ScoringEntry[],
   { tiebreakerGameId = null }: { tiebreakerGameId?: number | null } = {},
 ): WeekSummary {
-  const ranked = rankEntries(games, entries, tiebreakerGameId);
+  const playable = games.filter((g) => !isVoid(g));
+  const gamesFinal = playable.filter((g) => g.status === 'final').length;
+  const isFinal = games.length > 0 && gamesFinal === playable.length;
+  const eliminated = isFinal ? [] : eliminatedEntryIds(games, entries, tiebreakerGameId);
+  const ranked = orderOutLast(rankEntries(games, entries, tiebreakerGameId), eliminated);
   const notCounted = entries
     .filter((e) => !e.paid)
     .map((e) => scoreEntry(games, e, tiebreakerGameId))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }) || a.entryId - b.entryId);
-  const playable = games.filter((g) => !isVoid(g));
-  const gamesFinal = playable.filter((g) => g.status === 'final').length;
-  const isFinal = games.length > 0 && gamesFinal === playable.length;
   const counted = entries.filter((e) => e.paid);
 
   const splits: Record<number, GameSplit> = {};
@@ -277,7 +291,7 @@ export function weekSummary(
     winners: isFinal ? ranked.filter((e) => e.rank === 1) : [],
     stats,
     splits,
-    eliminated: isFinal ? [] : eliminatedEntryIds(games, entries, tiebreakerGameId),
+    eliminated,
     upset: upset ? { gameId: upset.gameId, wrongCount: upset.wrongCount, totalCount: upset.totalCount, correctCount: upset.correctCount, correctNames: upset.correctNames } : null,
     tiebreakerGameId: tb?.id ?? null,
     tiebreakerActualTotal: actualTiebreakerTotal(games, tiebreakerGameId),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   eliminatedEntryIds,
+  orderOutLast,
   rankEntries,
   scoreEntry,
   tiebreakerGame,
@@ -361,5 +362,46 @@ describe('eliminatedEntryIds', () => {
       entry(1, 'Ann (2)', { 1: A, 2: A, 3: H, 4: H }, 40, true, 12),
     ];
     expect(weekSummary(live, es).eliminated).toEqual([12]);
+  });
+
+  it('weekSummary lists OUT entries after the live ones sharing their rank; ranks stay the same', () => {
+    // Ann 2 correct; Bob, Cy, Di 1 each. Ann has game 3 home.
+    // Bob (3: H) best case 2 vs Ann 3 => OUT. Cy (3: A) best case 2 = Ann 2 => alive. Di (3: H) => OUT.
+    const g = [fin(1, THU, 20, 10), fin(2, SUN, 24, 17), game(3, MON)];
+    const es = [
+      entry(1, 'Ann', { 1: H, 2: H, 3: H }),
+      entry(2, 'Bob', { 1: H, 2: A, 3: H }),
+      entry(3, 'Cy', { 1: H, 2: A, 3: A }),
+      entry(4, 'Di', { 1: A, 2: H, 3: H }),
+      entry(5, 'Ed', { 1: A, 2: A, 3: H }),
+    ];
+    const s = weekSummary(g, es);
+    expect(s.eliminated.sort()).toEqual([2, 4, 5]);
+    expect(s.ranked.map((e) => [e.name, e.rank])).toEqual([
+      ['Ann', 1],
+      ['Cy', 2],
+      ['Bob', 2],
+      ['Di', 2],
+      ['Ed', 5],
+    ]);
+  });
+});
+
+describe('orderOutLast', () => {
+  const g = [fin(1, THU, 20, 10), game(2, MON)];
+  const ranked = rankEntries(g, [
+    entry(1, 'Ann', { 1: 'home', 2: 'home' }),
+    entry(2, 'Bob', { 1: 'home', 2: 'home' }),
+    entry(3, 'Cy', { 1: 'home', 2: 'away' }),
+    entry(4, 'Di', { 1: 'away', 2: 'away' }),
+  ]);
+  const names = (r: typeof ranked) => r.map((e) => e.name);
+
+  it('keeps the order with nobody out', () => {
+    expect(orderOutLast(ranked, [])).toBe(ranked);
+  });
+  it('moves OUT entries to the end of their own rank only, never past a lower rank', () => {
+    expect(names(orderOutLast(ranked, [1, 2]))).toEqual(['Cy', 'Ann', 'Bob', 'Di']);
+    expect(names(orderOutLast(ranked, [1, 4]))).toEqual(['Bob', 'Cy', 'Ann', 'Di']);
   });
 });

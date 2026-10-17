@@ -227,6 +227,29 @@ test('live leaderboard: OUT marks entries that can no longer finish 1st', async 
   await expect(page.getByTestId('out-footnote')).toHaveCount(0);
 });
 
+test('live leaderboard: OUT entries list after the live ones they are tied with', async ({ page, context, request }) => {
+  const { weekId, gameIds } = await seedWeek(request, { weekNumber: 7, numGames: 3, tuesday: WED });
+  for (const [n, u] of [['Ann', 'annie'], ['Bob', 'bobby'], ['Cy', 'cyrus']]) await createUser(request, n, u);
+  const H = 'home' as const;
+  const A = 'away' as const;
+  await submitPicksFor(request, 'annie', weekId, [H, H, H], 40);
+  await submitPicksFor(request, 'bobby', weekId, [H, A, H], 41);
+  await submitPicksFor(request, 'cyrus', weekId, [H, A, A], 42);
+  for (const u of ['annie', 'bobby', 'cyrus']) await setPaid(request, u, weekId, true);
+  // g0-g1 home => Ann 2, Bob 1, Cy 1. Bob's last pick matches Ann's, so he can't catch her => OUT;
+  // Cy picked the other side, so he can still tie her. Both stay T-2nd, but Cy lists first.
+  for (const i of [0, 1]) await setResult(request, gameIds[i], 'home');
+  await setNow(context, FRI);
+  await loginAs(page, 'annie');
+  await page.goto('/leaderboard');
+
+  const rows = page.locator('[data-testid^="rank-row-"]');
+  await expect(rows.getByTestId('player-name')).toHaveText(['annie', 'cyrus', 'bobby']);
+  await expect(rows.getByTestId('rank-label')).toHaveText(['1st', 'T-2nd', 'T-2nd']);
+  await expect(rows.nth(1).getByTestId('out-badge')).toHaveCount(0);
+  await expect(rows.nth(2).getByTestId('out-badge')).toHaveText('OUT');
+});
+
 test('live leaderboard: no OUT tags while everyone can still win', async ({ page, context, request }) => {
   const { gameIds } = await seedPlayers(request);
   await setResult(request, gameIds[0], 'home');
