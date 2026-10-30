@@ -36,6 +36,13 @@
       "when": 1791084884986,
       "tag": "0004_tidy_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793317517009,
+      "tag": "0005_huge_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }

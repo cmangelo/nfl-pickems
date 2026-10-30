@@ -1,4 +1,24 @@
-import { defineConfig, devices } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { chromium, defineConfig, devices } from '@playwright/test';
+
+/**
+ * Never `playwright install`: when the pre-installed Chromium under PLAYWRIGHT_BROWSERS_PATH is a different build
+ * than this Playwright version expects, launch the pre-installed headless shell (newest) directly instead.
+ */
+function preinstalledChromium(): string | undefined {
+  if (fs.existsSync(chromium.executablePath())) return undefined;
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers';
+  const dirs = fs.existsSync(root) ? fs.readdirSync(root).filter((d) => /^chromium_headless_shell-\d+$/.test(d)) : [];
+  dirs.sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]));
+  for (const d of dirs) {
+    const bin = path.join(root, d, 'chrome-headless-shell-linux64', 'chrome-headless-shell');
+    if (fs.existsSync(bin)) return bin;
+  }
+  return undefined;
+}
+const executablePath = preinstalledChromium();
+const launchOptions = executablePath ? { executablePath } : {};
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
@@ -10,7 +30,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
-  use: { baseURL, trace: 'retain-on-failure' },
+  use: { baseURL, trace: 'retain-on-failure', launchOptions },
   projects: [
     {
       name: 'mobile',

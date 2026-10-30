@@ -64,6 +64,18 @@ describe('server actions and route handlers authenticate', () => {
     }
   });
 
+  it('every other /api route handler (not test, not cron) awaits getCurrentUser/requireUser in each handler', () => {
+    const routes = walk(path.join(SRC, 'api'), (n) => n === 'route.ts').filter((f) => !/^api\/(test|cron)\//.test(rel(f)));
+    expect(routes.length).toBeGreaterThanOrEqual(2);
+    for (const file of routes) {
+      const chunks = fs.readFileSync(file, 'utf8').split(/^export async function /m).slice(1);
+      expect(chunks.length, rel(file)).toBeGreaterThan(0);
+      for (const chunk of chunks) {
+        expect(chunk, `${rel(file)}:${chunk.split('(')[0]}`).toMatch(/await (getCurrentUser|requireUser|requireAdmin)\(\)/);
+      }
+    }
+  });
+
   it('the cron route checks CRON_SECRET', () => {
     const src = fs.readFileSync(path.join(SRC, 'api', 'cron', 'sync', 'route.ts'), 'utf8');
     expect(src).toMatch(/CRON_SECRET/);

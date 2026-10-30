@@ -29,7 +29,14 @@ export default function AppHeader({
   const open = pathname === '/weeks';
   const from = open ? safeFrom(params.get('from')) : pathname;
   // Pages not tied to one week show a title instead of the week picker.
-  const title = pathname === '/admin/players' ? 'Admin' : pathname.startsWith('/leaderboard/season') ? 'Leaderboard' : null;
+  const title =
+    pathname === '/admin/players'
+      ? 'Admin'
+      : pathname.startsWith('/leaderboard/season')
+        ? 'Leaderboard'
+        : pathname === '/chat' || pathname.startsWith('/chat/')
+          ? 'Chat'
+          : null;
   const hideWeek = title !== null;
   // The picker is a page: tapping the button while it is open closes it (back to where it was opened from).
   const href = open

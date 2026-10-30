@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { bearerMatches } from '@/lib/bearer';
+import { pruneChat } from '@/lib/chat';
 import { getEspnClient } from '@/lib/espn';
 import { findStartWeek, importSeason, seasonOf } from '@/lib/schedule';
 import { syncScores } from '@/lib/sync';
@@ -17,6 +18,9 @@ export async function GET(req: Request) {
   const t = await now();
   const client = getEspnClient();
 
+  // 0. Chat retention (first: independent of ESPN, so an ESPN failure can't skip it).
+  const chat = { pruned: await pruneChat(t) };
+
   // 1. Schedule refresh from the current week on (flexed kickoffs, Week 18 matchups; new season start).
   const current = await getCurrentWeek(t);
   const imports: { season: number; fromWeek: number; weeks: number; games: number }[] = [];
@@ -31,5 +35,5 @@ export async function GET(req: Request) {
 
   // 2. Scores for the (possibly new) current week and the previous week.
   const sync = await syncScores({ client, now: t });
-  return NextResponse.json({ ok: true, imports, sync });
+  return NextResponse.json({ ok: true, imports, sync, chat });
 }

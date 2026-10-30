@@ -24,6 +24,8 @@ export const users = pgTable(
     lockedUntil: timestamp('locked_until', { withTimezone: true }),
     /** Soft delete: set when an admin removes the player. Entries/picks are kept; login must be refused. */
     deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
+    /** Highest chat_messages.id this player has seen (unread badge = newer messages from others). */
+    chatLastReadId: integer('chat_last_read_id').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('users_username_lower_idx').on(sql`lower(${t.username})`)],
@@ -130,3 +132,21 @@ export const syncState = pgTable('sync_state', {
   key: text('key').primaryKey(),
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
 });
+
+/** League-wide chat room. Messages older than 30 days are never read and are pruned nightly (chat.ts). */
+export const chatMessages = pgTable(
+  'chat_messages',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    /** Set by the app from now() so test time control works. */
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('chat_messages_created_at_idx').on(t.createdAt),
+    check('chat_messages_body_length', sql`char_length(${t.body}) BETWEEN 1 AND 500`),
+  ],
+);
