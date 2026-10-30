@@ -57,7 +57,7 @@ test('@smoke bottom nav floats as a rounded capsule above the page edge and neve
   expect(submit.y + submit.height).toBeLessThanOrEqual(navNow.y);
 
   // Lucide icons in the bar and the header.
-  for (const name of ['My Picks', 'Leaderboard', 'Games', 'Admin']) {
+  for (const name of ['My Picks', 'Leaderboard', 'Games', 'Chat', 'Admin']) {
     await expect(nav.getByRole('link', { name }).locator('svg.lucide')).toHaveCount(1);
   }
   await expect(nav.getByRole('link', { name: 'My Picks' })).toHaveAttribute('aria-current', 'page');

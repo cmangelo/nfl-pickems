@@ -88,3 +88,30 @@ describe('parseEntryTarget', () => {
     }
   });
 });
+
+describe('chat actions', () => {
+  it('sendMessageAction rejects a non-string body', async () => {
+    const { sendMessageAction } = await import('@/app/(app)/chat/actions');
+    for (const bad of [undefined, null, 5, {}, ['hi'], true]) {
+      expect(await sendMessageAction(bad), JSON.stringify(bad)).toEqual({ ok: false, error: 'invalid' });
+    }
+  });
+
+  it('markReadAction rejects a malformed id', async () => {
+    const { markReadAction } = await import('@/app/(app)/chat/actions');
+    for (const bad of BAD) expect(await markReadAction(bad), String(bad)).toEqual({ ok: false, error: 'invalid' });
+  });
+
+  it('sendMessageAction posts as the current user and reports validation errors', async () => {
+    const { sendMessageAction, markReadAction } = await import('@/app/(app)/chat/actions');
+    const { freshDb, makeUser } = await import('./testing/helpers');
+    await freshDb();
+    expect((await makeUser('Ann')).id).toBe(1); // the mocked requireUser() is user 1
+    expect(await sendMessageAction('   ')).toEqual({ ok: false, error: 'empty' });
+    expect(await sendMessageAction('x'.repeat(501))).toEqual({ ok: false, error: 'too_long' });
+    const res = await sendMessageAction(' hello ');
+    expect(res).toMatchObject({ ok: true, message: { userId: 1, body: 'hello' } });
+    if (!res.ok) throw new Error('unreachable');
+    expect(await markReadAction(res.message.id)).toEqual({ ok: true, lastReadId: res.message.id });
+  });
+});

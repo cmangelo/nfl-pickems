@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { BASE_URL, createUser, resetDb, seedWeek, submitPicksFor } from './helpers';
+import { BASE_URL, createUser, postChat, resetDb, seedWeek, submitPicksFor } from './helpers';
 
 // Next.js partial rendering skips layouts the client claims to already have, so layout-only auth is bypassable.
 // These tests send that crafted RSC request and assert every page enforces auth itself.
@@ -22,6 +22,7 @@ test.beforeEach(async ({ request }) => {
   await createUser(request, 'Mallory', 'mallory');
   ({ weekId } = await seedWeek(request, { weekNumber: 7, numGames: 2, tuesday: WED }));
   await submitPicksFor(request, USERNAME, weekId, ['home', 'away'], 41);
+  await postChat(request, USERNAME, 'chat as the victim', { at: WED }); // /chat would show the username
   const res = await request.post('/api/test/login', { data: { username: USERNAME } });
   victimId = (await res.json()).userId;
 });
@@ -47,6 +48,7 @@ function appPaths() {
     `/picks?week=${weekId}`,
     `/weeks?week=${weekId}`,
     `/account/pin`,
+    `/chat`,
   ];
 }
 

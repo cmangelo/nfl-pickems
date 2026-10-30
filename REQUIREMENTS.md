@@ -98,7 +98,7 @@ All times are **Pacific Time** (with daylight saving handled automatically).
 
 ## 9. Navigation
 
-- **Bottom nav** = views of the selected week: **My Picks · Leaderboard · Games**, plus **Admin** for admins only.
+- **Bottom nav** = views of the selected week: **My Picks · Leaderboard · Games**, then **Chat** (not tied to a week), plus **Admin** for admins only.
 - **Week picker** ("Week 5 ▾" in the header) switches the week for every view. Its list of weeks, with your score, rank and the winner, doubles as your pick history. There is no separate History page.
 - **Avatar menu** (top right): Change PIN, Log out.
 - What each view shows depends on the week's state:
@@ -107,6 +107,12 @@ All times are **Pacific Time** (with daylight saving handled automatically).
   - **Final:** the Leaderboard becomes the recap, with the winner banner and stats.
 - **Admin** sub-tabs: Payments and Games use the week picker. Players isn't tied to a week, so the week picker is hidden there.
 - **Theme:** dark mode with a **gold** accent: `#eab308` fills with dark text, `#efc646` for accent text on dark. Teal, indigo, mono (off-white) and amber (`#fbbf24`) were tried first and replaced. Not orange (the current mocks), red, or pink. Because correct/wrong already use green/red, the accent must stay clearly distinct from both (indigo is, in hue and lightness, plus icons).
+
+## 9a. Chat
+
+- One league-wide group chat (**Chat** tab) for trash talk: username, time and text per message, day separators in Pacific Time.
+- Messages are up to 500 characters; at most 10 per minute per player. History is kept for **30 days**, then deleted.
+- New messages appear within a few seconds while the chat is open (polling, no extra services). The Chat tab shows an unread badge ("9+" above 9) for messages from others since you last opened it.
 
 ## 10. Platform
 

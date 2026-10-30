@@ -17,7 +17,7 @@ const nav = (page: Page) => page.getByRole('navigation', { name: 'Main' });
 test('@smoke sign up lands on /picks with nav; logout returns to /login', async ({ page }) => {
   await signUpViaUi(page, 'Dan', 'Dan_Man', '4321');
   await expect(page.getByRole('heading', { name: 'My Picks' })).toBeVisible();
-  for (const name of ['My Picks', 'Leaderboard', 'Games']) {
+  for (const name of ['My Picks', 'Leaderboard', 'Games', 'Chat']) {
     await expect(nav(page).getByRole('link', { name })).toBeVisible();
   }
   await expect(page.getByTestId('avatar-button')).toHaveText('D');

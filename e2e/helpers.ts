@@ -105,6 +105,21 @@ export async function setEntryFee(request: APIRequestContext, weekId: number, ce
   expect(res.ok(), 'set entry fee').toBeTruthy();
 }
 
+/**
+ * Posts chat messages as `username` (bypasses the rate limit). `at` = ISO created_at (default the server's now());
+ * `count` = N messages "<body> 1".."<body> N", 1 s apart starting at `at`. Returns the new ids (ascending).
+ */
+export async function postChat(
+  request: APIRequestContext,
+  username: string,
+  body: string,
+  opts: { at?: string; count?: number } = {},
+): Promise<number[]> {
+  const res = await request.post('/api/test/post-chat', { data: { username, body, ...opts } });
+  expect(res.ok(), `post chat as ${username}`).toBeTruthy();
+  return ((await res.json()) as { ids: number[] }).ids;
+}
+
 /** UI-driven sign up. Ends on /picks. */
 export async function signUpViaUi(page: Page, firstName: string, username: string, pin: string) {
   await page.goto('/login');
