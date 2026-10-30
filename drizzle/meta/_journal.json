@@ -43,6 +43,13 @@
       "when": 1793317517009,
       "tag": "0005_huge_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793379308215,
+      "tag": "0006_long_sasquatch",
+      "breakpoints": true
     }
   ]
 }

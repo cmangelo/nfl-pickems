@@ -1,19 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { ArrowDown, SendHorizontal } from 'lucide-react';
 import {
   CHAT_COUNTER_AT,
+  CHAT_DELETE_ERROR,
   CHAT_POLL_MS,
+  canDeleteChatMessage,
   chatErrorMessage,
   chatRemaining,
   chatTimeLabel,
   groupChatByDay,
   mergeChatMessages,
+  removeChatMessages,
   validateChatBody,
   type ChatMessage,
 } from '@/lib/chat-view';
-import { markReadAction, sendMessageAction } from './actions';
+import { deleteMessageAction, markReadAction, sendMessageAction } from './actions';
 
 /** Within this many px of the bottom counts as "at the bottom" (auto-scroll on new messages). */
 const NEAR_BOTTOM_PX = 80;
@@ -28,16 +31,20 @@ const isNearBottom = (el: HTMLElement | null) => !el || el.scrollHeight - el.scr
 
 /**
  * The league chat room: day-grouped bubbles in a scroll area that fills the page above the floating tab bar,
- * and a composer pinned under it. Polls `/api/chat?after=<lastId>` every CHAT_POLL_MS while the tab is visible.
+ * and a composer pinned under it. Polls `/api/chat?after=<lastId>&from=<oldestId>` every CHAT_POLL_MS while the
+ * tab is visible (new messages, and deletions to drop). Tapping a bubble the viewer may delete selects it and
+ * shows a two-tap "Delete" next to its time.
  */
 export default function ChatRoom({
   initialMessages,
   initialHasMore,
   viewerId,
+  viewerIsAdmin,
 }: {
   initialMessages: ChatMessage[];
   initialHasMore: boolean;
   viewerId: number;
+  viewerIsAdmin: boolean;
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -47,6 +54,10 @@ export default function ChatRoom({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pill, setPill] = useState(false);
+  /** The bubble showing its Delete button, and whether that button is asking for the second tap. */
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -103,10 +114,18 @@ export default function ChatRoom({
     try {
       do {
         again.current = false;
-        const res = await fetch(`/api/chat?after=${cursorRef.current}`, { cache: 'no-store' });
+        const oldest = messagesRef.current[0];
+        const qs = `after=${cursorRef.current}${oldest ? `&from=${oldest.id}` : ''}`;
+        const res = await fetch(`/api/chat?${qs}`, { cache: 'no-store' });
         if (!res.ok || !mounted.current) return;
-        const { messages: incoming } = (await res.json()) as { messages: ChatMessage[] };
-        if (!mounted.current || incoming.length === 0) continue;
+        const { messages: incoming, deletedIds = [] } = (await res.json()) as { messages: ChatMessage[]; deletedIds?: number[] };
+        if (!mounted.current) return;
+        if (deletedIds.length > 0) {
+          const gone = new Set(deletedIds);
+          setMessages((prev) => removeChatMessages(prev, gone));
+          setSelectedId((id) => (id !== null && gone.has(id) ? null : id));
+        }
+        if (incoming.length === 0) continue;
         cursorRef.current = Math.max(cursorRef.current, lastIdOf(incoming));
         const known = new Set(messagesRef.current.map((m) => m.id));
         const fresh = incoming.filter((m) => !known.has(m.id));
@@ -142,6 +161,27 @@ export default function ChatRoom({
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [fetchNew]);
+
+  // While a bubble is selected: a tap anywhere outside it, or Escape, deselects it.
+  useEffect(() => {
+    if (selectedId === null) return;
+    const deselect = () => {
+      setSelectedId(null);
+      setConfirmDelete(false);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (!(e.target instanceof Element && e.target.closest('[data-selected="true"]'))) deselect();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') deselect();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [selectedId]);
 
   // Grow the composer with its text.
   useLayoutEffect(() => {
@@ -206,6 +246,39 @@ export default function ChatRoom({
     }
   };
 
+  /** Tap on a bubble: select it (or deselect it again) when the viewer may delete it; otherwise nothing. */
+  const toggleSelect = (m: ChatMessage) => {
+    if (!canDeleteChatMessage({ id: viewerId, isAdmin: viewerIsAdmin }, m)) return;
+    if (window.getSelection()?.toString()) return; // finished selecting text, not a tap
+    setSelectedId((id) => (id === m.id ? null : m.id));
+    setConfirmDelete(false);
+  };
+
+  const remove = async (id: number) => {
+    if (deleting) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await deleteMessageAction(id);
+      // not_found: already deleted (or aged out) elsewhere, so it's gone either way.
+      if (res.ok || res.error === 'not_found') {
+        setMessages((prev) => removeChatMessages(prev, [id]));
+        setSelectedId(null);
+      } else {
+        setError(CHAT_DELETE_ERROR);
+      }
+    } catch {
+      setError(CHAT_DELETE_ERROR);
+    } finally {
+      setConfirmDelete(false);
+      setDeleting(false);
+    }
+  };
+
   const groups = groupChatByDay(messages);
 
   return (
@@ -255,6 +328,8 @@ export default function ChatRoom({
                   {g.messages.map((m, i) => {
                     const own = m.userId === viewerId;
                     const firstOfRun = i === 0 || g.messages[i - 1].userId !== m.userId;
+                    const deletable = canDeleteChatMessage({ id: viewerId, isAdmin: viewerIsAdmin }, m);
+                    const selected = selectedId === m.id;
                     return (
                       <li
                         key={m.id}
@@ -262,6 +337,7 @@ export default function ChatRoom({
                         data-id={m.id}
                         data-own={own ? 'true' : 'false'}
                         data-username={m.username}
+                        data-selected={selected ? 'true' : undefined}
                         className={`flex flex-col ${own ? 'items-end' : 'items-start'} ${firstOfRun ? 'mt-2.5' : 'mt-1'}`}
                       >
                         {own ? (
@@ -276,15 +352,45 @@ export default function ChatRoom({
                         )}
                         <div
                           data-testid="chat-body"
+                          {...(deletable && {
+                            role: 'button',
+                            tabIndex: 0,
+                            'aria-expanded': selected,
+                            onClick: () => toggleSelect(m),
+                            onKeyDown: (e: ReactKeyboardEvent) => {
+                              if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                                e.preventDefault();
+                                toggleSelect(m);
+                              }
+                            },
+                          })}
                           className={`max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[15px] leading-snug ${
                             own ? 'rounded-br-md bg-accent text-on-accent' : 'rounded-bl-md bg-surface-2 text-fg'
-                          }`}
+                          } ${deletable ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-inset ring-fg/70 brightness-90' : ''}`}
                         >
                           {m.body}
                         </div>
-                        <time dateTime={m.createdAt} data-testid="chat-time" className="mt-0.5 px-1.5 text-[11px] text-muted">
-                          {chatTimeLabel(m.createdAt)}
-                        </time>
+                        <div className={`mt-0.5 flex items-center gap-2 px-1.5 ${own ? 'flex-row-reverse' : ''}`}>
+                          <time dateTime={m.createdAt} data-testid="chat-time" className="text-[11px] text-muted">
+                            {chatTimeLabel(m.createdAt)}
+                          </time>
+                          {selected && (
+                            <button
+                              type="button"
+                              data-testid="chat-delete"
+                              onClick={() => void remove(m.id)}
+                              disabled={deleting}
+                              aria-label={confirmDelete ? undefined : 'Delete message'}
+                              // Takes no more room than the time line (it hangs into the gap below), so selecting a bubble
+                              // doesn't shift the list; the ::after pad makes the tap target bigger than the pill.
+                              className={`relative -mb-1 h-5 rounded-full border px-2.5 text-[11px] font-bold after:absolute after:-inset-2 after:content-[''] disabled:opacity-60 ${
+                                confirmDelete ? 'border-wrong bg-wrong text-white' : 'border-wrong/60 text-wrong'
+                              }`}
+                            >
+                              {confirmDelete ? 'Tap again to delete' : 'Delete'}
+                            </button>
+                          )}
+                        </div>
                       </li>
                     );
                   })}

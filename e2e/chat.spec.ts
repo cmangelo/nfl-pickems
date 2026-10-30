@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { createUser, loginAs, postChat, resetDb, setNow } from './helpers';
+import { expect, test, type Browser, type Page } from '@playwright/test';
+import { BASE_URL, createUser, loginAs, postChat, resetDb, setNow } from './helpers';
 
 // Sun Oct 25 2026, 1:00 PM PT. Messages are posted with explicit `at`s relative to it.
 const T = '2026-10-25T20:00:00Z';
@@ -19,6 +19,28 @@ async function openChat(page: Page, username = 'admin') {
   await loginAs(page, username);
   await page.goto('/chat');
   await expect(page.getByTestId('chat-room')).toBeVisible();
+}
+
+/** A second browser (another player's phone) with /chat open as `username`. Close its context when done. */
+async function openChatElsewhere(browser: Browser, username: string) {
+  const context = await browser.newContext({ baseURL: BASE_URL, viewport: { width: 390, height: 844 }, hasTouch: true });
+  const page = await context.newPage();
+  await openChat(page, username);
+  return page;
+}
+
+const bubble = (page: Page, text: string) => page.getByTestId('chat-body').getByText(text, { exact: true });
+const row = (page: Page, text: string) => messages(page).filter({ has: bubble(page, text) });
+
+/** Selects the bubble and deletes it with the two taps. */
+async function deleteViaUi(page: Page, text: string) {
+  await bubble(page, text).click();
+  const del = row(page, text).getByTestId('chat-delete');
+  await expect(del).toHaveAccessibleName('Delete message');
+  await del.click();
+  await expect(del).toHaveText('Tap again to delete');
+  await del.click();
+  await expect(bubble(page, text)).toHaveCount(0);
 }
 
 test('@smoke empty room: title instead of the week picker, empty state, Send disabled, composer above the tab bar', async ({ page }) => {
@@ -276,4 +298,141 @@ test('logged out: the chat API answers 401 and /chat redirects to login', async 
   expect((await request.get('/api/chat/unread')).status()).toBe(401);
   await page.goto('/chat');
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test('@smoke delete own message: tap selects, two taps delete, gone after reload; others’ bubbles do nothing', async ({ page, request }) => {
+  await createUser(request, 'Bob', 'bobby');
+  await postChat(request, 'admin', 'admin says hi', { at: ago(6) });
+  await postChat(request, 'bobby', 'oops typo', { at: ago(5) });
+  await postChat(request, 'bobby', 'keep me', { at: ago(4) });
+  await openChat(page, 'bobby');
+  await expect(messages(page)).toHaveCount(3);
+
+  // Someone else's bubble: not a button, tapping it shows nothing.
+  await expect(row(page, 'admin says hi').getByRole('button')).toHaveCount(0);
+  await bubble(page, 'admin says hi').click();
+  await expect(page.getByTestId('chat-delete')).toHaveCount(0);
+
+  // Select own bubble; Escape, a tap elsewhere and tapping it again each deselect.
+  const oops = row(page, 'oops typo');
+  await bubble(page, 'oops typo').click();
+  await expect(oops.getByTestId('chat-delete')).toHaveText('Delete');
+  await expect(oops.getByRole('button', { name: 'oops typo' })).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('chat-delete')).toHaveCount(0);
+  await bubble(page, 'oops typo').click();
+  await expect(page.getByTestId('chat-delete')).toHaveCount(1);
+  await page.getByTestId('chat-day').click();
+  await expect(page.getByTestId('chat-delete')).toHaveCount(0);
+  await bubble(page, 'oops typo').click();
+  await bubble(page, 'oops typo').click();
+  await expect(page.getByTestId('chat-delete')).toHaveCount(0);
+
+  // Selecting another bubble moves the selection and drops a pending confirm.
+  await bubble(page, 'oops typo').click();
+  await oops.getByTestId('chat-delete').click();
+  await expect(oops.getByTestId('chat-delete')).toHaveText('Tap again to delete');
+  await bubble(page, 'keep me').click();
+  await expect(oops.getByTestId('chat-delete')).toHaveCount(0);
+  await expect(row(page, 'keep me').getByTestId('chat-delete')).toHaveText('Delete');
+  await page.keyboard.press('Escape');
+
+  // Selecting doesn't shift the list.
+  const before = (await bubble(page, 'keep me').boundingBox())!.y;
+  await bubble(page, 'oops typo').click();
+  await expect(oops.getByTestId('chat-delete')).toBeVisible();
+  expect(Math.abs((await bubble(page, 'keep me').boundingBox())!.y - before)).toBeLessThanOrEqual(1);
+  await page.keyboard.press('Escape');
+
+  await deleteViaUi(page, 'oops typo');
+  await expect(messages(page)).toHaveCount(2);
+  await expect(page.getByTestId('chat-error')).toHaveCount(0);
+  await page.reload();
+  await expect(messages(page)).toHaveCount(2);
+  await expect(page.getByText('oops typo')).toHaveCount(0);
+});
+
+test("admin deletes another player's message; the username header moves to the run's next bubble", async ({ page, request }) => {
+  await createUser(request, 'Bob', 'bobby');
+  await postChat(request, 'bobby', 'first of the run', { at: ago(5) });
+  await postChat(request, 'bobby', 'second of the run', { at: ago(4) });
+  await openChat(page, 'admin');
+
+  const second = row(page, 'second of the run');
+  await expect(row(page, 'first of the run').getByTestId('chat-username')).not.toHaveClass(/sr-only/);
+  await expect(second.getByTestId('chat-username')).toHaveClass(/sr-only/);
+
+  await deleteViaUi(page, 'first of the run');
+  await expect(messages(page)).toHaveCount(1);
+  await expect(second.getByTestId('chat-username')).not.toHaveClass(/sr-only/);
+  await expect(second.getByTestId('chat-username')).toHaveText('bobby');
+  await page.reload();
+  await expect(messages(page)).toHaveCount(1);
+  await expect(page.getByText('first of the run')).toHaveCount(0);
+});
+
+test('a deletion reaches another open viewer by polling, without a reload', async ({ page, request, browser }) => {
+  await createUser(request, 'Bob', 'bobby');
+  await postChat(request, 'bobby', 'regret this', { at: ago(5) });
+  await postChat(request, 'bobby', 'fine one', { at: ago(4) });
+  await openChat(page, 'admin');
+  await expect(messages(page)).toHaveCount(2);
+  await expect(row(page, 'fine one').getByTestId('chat-username')).toHaveClass(/sr-only/);
+
+  const bobPage = await openChatElsewhere(browser, 'bobby');
+  try {
+    await deleteViaUi(bobPage, 'regret this');
+  } finally {
+    await bobPage.context().close();
+  }
+
+  await expect(bubble(page, 'regret this')).toHaveCount(0, { timeout: 8_000 }); // one 4 s poll
+  await expect(messages(page)).toHaveCount(1);
+  await expect(row(page, 'fine one').getByTestId('chat-username')).not.toHaveClass(/sr-only/);
+
+  // New messages still arrive afterwards (the cursor didn't move).
+  await postChat(request, 'bobby', 'after the delete', { at: ago(1) });
+  await expect(bubble(page, 'after the delete')).toBeVisible({ timeout: 8_000 });
+});
+
+test('the unread badge drops a deleted unread message', async ({ page, request, browser }) => {
+  await createUser(request, 'Bob', 'bobby');
+  await setNow(page.context(), T);
+  await loginAs(page, 'admin');
+  await postChat(request, 'bobby', 'unread', { at: ago(5), count: 2 });
+  await page.goto('/picks');
+  await expect(page.getByTestId('chat-badge')).toHaveText('2');
+
+  const bobPage = await openChatElsewhere(browser, 'bobby');
+  try {
+    await deleteViaUi(bobPage, 'unread 1');
+  } finally {
+    await bobPage.context().close();
+  }
+
+  await page.getByTestId('bottom-nav').getByRole('link', { name: 'Games' }).click();
+  await expect(page).toHaveURL(/\/games/);
+  await expect(page.getByTestId('chat-badge')).toHaveText('1');
+  await expect(chatTab(page)).toHaveAccessibleName('Chat, 1 unread');
+});
+
+test('a failed delete shows the error and keeps the message', async ({ page, request }) => {
+  await postChat(request, 'admin', 'sticky', { at: ago(2) });
+  await openChat(page, 'admin');
+  // The server action is a POST to the page: make it fail like a dropped connection.
+  await page.route('**/chat', (route) => (route.request().method() === 'POST' ? route.abort() : route.continue()));
+  await bubble(page, 'sticky').click();
+  await row(page, 'sticky').getByTestId('chat-delete').click();
+  await row(page, 'sticky').getByTestId('chat-delete').click();
+  await expect(page.getByTestId('chat-error')).toHaveText("Couldn't delete that message.");
+  await expect(bubble(page, 'sticky')).toBeVisible();
+  // Still selected, back to the first tap.
+  await expect(row(page, 'sticky').getByTestId('chat-delete')).toHaveText('Delete');
+
+  await page.unroute('**/chat');
+  await row(page, 'sticky').getByTestId('chat-delete').click();
+  await row(page, 'sticky').getByTestId('chat-delete').click();
+  await expect(bubble(page, 'sticky')).toHaveCount(0);
+  await expect(page.getByTestId('chat-error')).toHaveCount(0);
+  await expect(page.getByTestId('chat-empty')).toBeVisible();
 });
