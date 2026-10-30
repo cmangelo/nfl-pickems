@@ -102,6 +102,13 @@ describe('chat actions', () => {
     for (const bad of BAD) expect(await markReadAction(bad), String(bad)).toEqual({ ok: false, error: 'invalid' });
   });
 
+  it('deleteMessageAction rejects a malformed id', async () => {
+    const { deleteMessageAction } = await import('@/app/(app)/chat/actions');
+    for (const bad of [...BAD, '1', 'abc', true]) {
+      expect(await deleteMessageAction(bad), String(bad)).toEqual({ ok: false, error: 'invalid' });
+    }
+  });
+
   it('sendMessageAction posts as the current user and reports validation errors', async () => {
     const { sendMessageAction, markReadAction } = await import('@/app/(app)/chat/actions');
     const { freshDb, makeUser } = await import('./testing/helpers');
@@ -113,5 +120,16 @@ describe('chat actions', () => {
     expect(res).toMatchObject({ ok: true, message: { userId: 1, body: 'hello' } });
     if (!res.ok) throw new Error('unreachable');
     expect(await markReadAction(res.message.id)).toEqual({ ok: true, lastReadId: res.message.id });
+  });
+
+  it('deleteMessageAction deletes as the current user', async () => {
+    const { sendMessageAction, deleteMessageAction } = await import('@/app/(app)/chat/actions');
+    const { freshDb, makeUser } = await import('./testing/helpers');
+    await freshDb();
+    expect((await makeUser('Ann')).id).toBe(1);
+    const res = await sendMessageAction('oops');
+    if (!res.ok) throw new Error('unreachable');
+    expect(await deleteMessageAction(res.message.id)).toEqual({ ok: true });
+    expect(await deleteMessageAction(res.message.id)).toEqual({ ok: false, error: 'not_found' });
   });
 });

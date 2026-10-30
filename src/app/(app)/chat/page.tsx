@@ -14,7 +14,7 @@ export default async function ChatPage() {
   return (
     <>
       <h1 className="sr-only">Chat</h1>
-      <ChatRoom initialMessages={messages} initialHasMore={hasMore} viewerId={user.id} />
+      <ChatRoom initialMessages={messages} initialHasMore={hasMore} viewerId={user.id} viewerIsAdmin={user.isAdmin} />
     </>
   );
 }

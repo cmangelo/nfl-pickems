@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHAT_MAX_LENGTH,
+  canDeleteChatMessage,
   chatDayKey,
   chatDayLabel,
   chatErrorMessage,
@@ -10,6 +11,7 @@ import {
   groupChatByDay,
   mergeChatMessages,
   normalizeChatBody,
+  removeChatMessages,
   unreadBadgeLabel,
   validateChatBody,
 } from './chat-view';
@@ -99,6 +101,21 @@ describe('chat list helpers', () => {
     const a = [{ id: 3 }, { id: 5 }];
     expect(mergeChatMessages(a, [{ id: 5 }, { id: 6 }, { id: 1 }]).map((x) => x.id)).toEqual([1, 3, 5, 6]);
     expect(mergeChatMessages([], [])).toEqual([]);
+  });
+
+  it('removeChatMessages drops the given ids and keeps the same array when nothing matches', () => {
+    const a = [{ id: 3 }, { id: 5 }, { id: 7 }];
+    expect(removeChatMessages(a, [5, 9]).map((x) => x.id)).toEqual([3, 7]);
+    expect(removeChatMessages(a, new Set([3, 7])).map((x) => x.id)).toEqual([5]);
+    expect(removeChatMessages(a, [1, 9])).toBe(a);
+    expect(removeChatMessages(a, [])).toBe(a);
+    expect(removeChatMessages([], [1])).toEqual([]);
+  });
+
+  it('canDeleteChatMessage: own messages, or any message for an admin', () => {
+    expect(canDeleteChatMessage({ id: 1, isAdmin: false }, { userId: 1 })).toBe(true);
+    expect(canDeleteChatMessage({ id: 1, isAdmin: false }, { userId: 2 })).toBe(false);
+    expect(canDeleteChatMessage({ id: 1, isAdmin: true }, { userId: 2 })).toBe(true);
   });
 
   it('unread badge: hidden at 0, number up to 9, then 9+', () => {

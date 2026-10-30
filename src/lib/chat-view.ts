@@ -33,6 +33,8 @@ export interface ChatMessage {
 }
 
 export type ChatPostError = 'empty' | 'too_long' | 'rate_limited';
+/** `not_found`: unknown, already deleted or aged out. `forbidden`: someone else's message (non-admin). */
+export type ChatDeleteError = 'not_found' | 'forbidden';
 
 /** Trims, normalizes line endings and drops NUL characters (Postgres text can't hold them). */
 export function normalizeChatBody(raw: string): string {
@@ -81,6 +83,14 @@ export function chatErrorMessage(error: ChatPostError | 'invalid'): string {
   }
 }
 
+/** Copy for a failed delete. */
+export const CHAT_DELETE_ERROR = "Couldn't delete that message.";
+
+/** Players may delete their own messages; admins may delete any. */
+export function canDeleteChatMessage(viewer: { id: number; isAdmin: boolean }, message: { userId: number }): boolean {
+  return viewer.isAdmin || message.userId === viewer.id;
+}
+
 const toDate = (d: string | Date) => (typeof d === 'string' ? new Date(d) : d);
 
 /** PT calendar day of a message, yyyy-MM-dd (day separators). */
@@ -123,6 +133,13 @@ export function mergeChatMessages<T extends { id: number }>(current: T[], incomi
   const byId = new Map(current.map((m) => [m.id, m]));
   for (const m of incoming) byId.set(m.id, m);
   return [...byId.values()].sort((a, b) => a.id - b.id);
+}
+
+/** Drops messages whose id is in `ids`; returns `current` itself when none of them is there. */
+export function removeChatMessages<T extends { id: number }>(current: T[], ids: Iterable<number>): T[] {
+  const drop = new Set(ids);
+  if (drop.size === 0 || !current.some((m) => drop.has(m.id))) return current;
+  return current.filter((m) => !drop.has(m.id));
 }
 
 /** Unread badge text: null (hidden) at 0, "1".."9", then "9+". */

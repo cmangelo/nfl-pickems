@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { chatMessages } from '@/db/schema';
 import { freshDb, makeUser } from '@/lib/testing/helpers';
@@ -49,7 +50,7 @@ describe('chat route handlers', () => {
 
   it('400 on malformed ids or both cursors', async () => {
     auth.user = { id: annId };
-    for (const qs of ['?after=abc', '?after=-1', '?after=1.5', '?after=1e3', '?after=', '?after=99999999999', '?before=0', '?before=x', '?before=2147483648', '?after=1&before=5']) {
+    for (const qs of ['?after=abc', '?after=-1', '?after=1.5', '?after=1e3', '?after=', '?after=99999999999', '?before=0', '?before=x', '?before=2147483648', '?after=1&before=5', '?from=1', '?before=5&from=1', '?after=1&from=0', '?after=1&from=x', '?after=1&from=-1', '?after=1&from=', '?after=1&from=2147483648', '?after=x&from=1']) {
       const res = await get(qs);
       expect(res.status, qs).toBe(400);
       expect(res.headers.get('cache-control')).toBe('no-store');
@@ -74,6 +75,22 @@ describe('chat route handlers', () => {
     const after = await (await get(`?after=${ids[53]}`)).json();
     expect(after).toEqual({ messages: [expect.objectContaining({ body: 'b54' }), expect.objectContaining({ body: 'b55' })] });
     expect((await (await get('?after=0')).json()).messages).toHaveLength(55);
+  });
+
+  it('?after=&from= adds the deleted ids at or above `from`; without `from` there is no deletedIds', async () => {
+    auth.user = { id: annId };
+    const db = await getDb();
+    const tombstone = { body: null, deletedAt: new Date('2026-10-25T19:00:00Z') };
+    for (const i of [2, 10, 54]) await db.update(chatMessages).set(tombstone).where(eq(chatMessages.id, ids[i]));
+    const polled = await (await get(`?after=${ids[52]}&from=${ids[5]}`)).json();
+    expect(polled.messages.map((m: { body: string }) => m.body)).toEqual(['b53', 'b55']); // b54 is deleted
+    expect([...polled.deletedIds].sort((a: number, b: number) => a - b)).toEqual([ids[10], ids[54]]);
+    expect(await (await get(`?after=${ids[52]}`)).json()).toEqual({
+      messages: [expect.objectContaining({ body: 'b53' }), expect.objectContaining({ body: 'b55' })],
+    });
+    expect((await (await get(`?after=0&from=1`)).json()).deletedIds).toHaveLength(3);
+    // The latest page skips them too.
+    expect((await (await get()).json()).messages.map((m: { body: string }) => m.body)).not.toContain('b54');
   });
 
   it('unread count for the current user', async () => {

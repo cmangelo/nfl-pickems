@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, gte, lt, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNotNull, isNull, lt, ne, sql, type SQL } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { chatMessages, users } from '@/db/schema';
 import {
@@ -7,6 +7,7 @@ import {
   CHAT_RATE_WINDOW_MS,
   CHAT_RETENTION_DAYS,
   validateChatBody,
+  type ChatDeleteError,
   type ChatMessage,
   type ChatPostError,
 } from './chat-view';
@@ -15,8 +16,11 @@ export * from './chat-view';
 
 /** Most messages one `listAfter` poll returns; the next poll (after the last id) picks up the rest. */
 export const CHAT_AFTER_CAP = 200;
+/** Most ids one `listDeletedIds` call returns (the most recently deleted first). */
+export const CHAT_DELETED_CAP = 500;
 
 export type PostMessageResult = { ok: true; message: ChatMessage } | { ok: false; error: ChatPostError };
+export type DeleteMessageResult = { ok: true } | { ok: false; error: ChatDeleteError };
 
 export interface ChatPage {
   /** Oldest-first. */
@@ -29,6 +33,9 @@ export interface ChatPage {
 export function chatCutoff(at: Date): Date {
   return new Date(at.getTime() - CHAT_RETENTION_DAYS * 86_400_000);
 }
+
+/** Live (not deleted) messages within the window at `at`: every read starts from this. */
+const live = (at: Date) => and(isNull(chatMessages.deletedAt), gte(chatMessages.createdAt, chatCutoff(at)));
 
 async function selectMessages(where: SQL | undefined, order: 'asc' | 'desc', limit: number): Promise<ChatMessage[]> {
   const db = await getDb();
@@ -45,7 +52,8 @@ async function selectMessages(where: SQL | undefined, order: 'asc' | 'desc', lim
     .where(where)
     .orderBy(order === 'asc' ? asc(chatMessages.id) : desc(chatMessages.id))
     .limit(limit);
-  return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+  // Callers only select live rows, whose body is never NULL (DB CHECK).
+  return rows.map((r) => ({ ...r, body: r.body ?? '', createdAt: r.createdAt.toISOString() }));
 }
 
 /** Newest-first rows (limit + 1 fetched) -> an oldest-first page. */
@@ -55,8 +63,8 @@ function toPage(rows: ChatMessage[], limit: number): ChatPage {
 
 /**
  * Posts a message at `at` (from now()). Trimmed; empty or > CHAT_MAX_LENGTH characters is refused, and so is
- * the (CHAT_RATE_LIMIT + 1)th message within CHAT_RATE_WINDOW_MS. The rate check and the insert are one
- * statement (atomic on every driver).
+ * the (CHAT_RATE_LIMIT + 1)th message within CHAT_RATE_WINDOW_MS (deleted messages still count). The rate
+ * check and the insert are one statement (atomic on every driver).
  */
 export async function postMessage(userId: number, rawBody: string, at: Date): Promise<PostMessageResult> {
   const v = validateChatBody(rawBody);
@@ -77,22 +85,59 @@ export async function postMessage(userId: number, rawBody: string, at: Date): Pr
   return { ok: true, message };
 }
 
+/**
+ * Deletes a message at `at`: its own author or an admin may. Leaves a tombstone (`deleted_at`, `deleted_by_id`,
+ * body NULL) so open clients drop it on their next poll. The permission check is in the UPDATE itself; when
+ * nothing was updated, a live message in the window means `forbidden`, anything else `not_found`.
+ */
+export async function deleteMessage(
+  actor: { id: number; isAdmin: boolean },
+  messageId: number,
+  at: Date,
+): Promise<DeleteMessageResult> {
+  const db = await getDb();
+  const target = and(eq(chatMessages.id, messageId), live(at));
+  const rows = await db
+    .update(chatMessages)
+    .set({ deletedAt: at, deletedById: actor.id, body: null })
+    .where(and(target, actor.isAdmin ? undefined : eq(chatMessages.userId, actor.id)))
+    .returning({ id: chatMessages.id });
+  if (rows.length > 0) return { ok: true };
+  const [exists] = await db.select({ id: chatMessages.id }).from(chatMessages).where(target);
+  return { ok: false, error: exists ? 'forbidden' : 'not_found' };
+}
+
 /** The newest `limit` messages within the window, oldest-first. */
 export async function listRecent(at: Date, limit = CHAT_PAGE_SIZE): Promise<ChatPage> {
-  const rows = await selectMessages(gte(chatMessages.createdAt, chatCutoff(at)), 'desc', limit + 1);
+  const rows = await selectMessages(live(at), 'desc', limit + 1);
   return toPage(rows, limit);
 }
 
 /** The `limit` messages just older than `beforeId` within the window, oldest-first ("Load older"). */
 export async function listBefore(beforeId: number, at: Date, limit = CHAT_PAGE_SIZE): Promise<ChatPage> {
-  const where = and(lt(chatMessages.id, beforeId), gte(chatMessages.createdAt, chatCutoff(at)));
+  const where = and(lt(chatMessages.id, beforeId), live(at));
   return toPage(await selectMessages(where, 'desc', limit + 1), limit);
 }
 
 /** Every message with id > afterId within the window, oldest-first (at most CHAT_AFTER_CAP; polling). */
 export async function listAfter(afterId: number, at: Date): Promise<ChatMessage[]> {
-  const where = and(gt(chatMessages.id, afterId), gte(chatMessages.createdAt, chatCutoff(at)));
+  const where = and(gt(chatMessages.id, afterId), live(at));
   return selectMessages(where, 'asc', CHAT_AFTER_CAP);
+}
+
+/**
+ * Ids of deleted messages with id >= fromId within the window (polling: a client passes its oldest loaded id
+ * and drops these). At most CHAT_DELETED_CAP, the most recently deleted first.
+ */
+export async function listDeletedIds(fromId: number, at: Date): Promise<number[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({ id: chatMessages.id })
+    .from(chatMessages)
+    .where(and(gte(chatMessages.id, fromId), isNotNull(chatMessages.deletedAt), gte(chatMessages.createdAt, chatCutoff(at))))
+    .orderBy(desc(chatMessages.deletedAt), desc(chatMessages.id))
+    .limit(CHAT_DELETED_CAP);
+  return rows.map((r) => r.id);
 }
 
 /** Messages from other players newer than the user's last-read message, within the window. */
@@ -104,7 +149,7 @@ export async function unreadCount(userId: number, at: Date): Promise<number> {
     .where(
       and(
         ne(chatMessages.userId, userId),
-        gte(chatMessages.createdAt, chatCutoff(at)),
+        live(at),
         sql`${chatMessages.id} > (SELECT ${users.chatLastReadId} FROM ${users} WHERE ${users.id} = ${userId})`,
       ),
     );

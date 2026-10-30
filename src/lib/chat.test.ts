@@ -4,9 +4,12 @@ import { getDb } from '@/db';
 import { chatMessages, users } from '@/db/schema';
 import {
   CHAT_AFTER_CAP,
+  CHAT_DELETED_CAP,
   chatCutoff,
+  deleteMessage,
   listAfter,
   listBefore,
+  listDeletedIds,
   listRecent,
   markRead,
   postMessage,
@@ -184,6 +187,119 @@ describe('chat', () => {
       await seed(bob.id, 1, plus(5000));
       expect(await unreadCount(ann.id, plus(10_000))).toBe(1);
       expect(await markRead(9999, ids[2])).toBe(0);
+    });
+  });
+
+  describe('deleteMessage', () => {
+    const row = async (id: number) => (await (await getDb()).select().from(chatMessages).where(eq(chatMessages.id, id)))[0];
+    let admin: { id: number };
+    beforeEach(async () => {
+      admin = await makeUser('Ada');
+    });
+
+    it('a player deletes their own message: tombstone with the body scrubbed', async () => {
+      const [id] = await seed(ann.id, 1);
+      expect(await deleteMessage({ id: ann.id, isAdmin: false }, id, plus(5000))).toEqual({ ok: true });
+      expect(await row(id)).toMatchObject({ body: null, deletedAt: plus(5000), deletedById: ann.id, userId: ann.id });
+    });
+
+    it("a player can't delete someone else's message; it stays", async () => {
+      const [id] = await seed(bob.id, 1);
+      expect(await deleteMessage({ id: ann.id, isAdmin: false }, id, plus(5000))).toEqual({ ok: false, error: 'forbidden' });
+      expect(await row(id)).toMatchObject({ body: 'm1', deletedAt: null, deletedById: null });
+    });
+
+    it("an admin deletes anyone's message", async () => {
+      const [id] = await seed(bob.id, 1);
+      expect(await deleteMessage({ id: admin.id, isAdmin: true }, id, plus(5000))).toEqual({ ok: true });
+      expect(await row(id)).toMatchObject({ body: null, deletedById: admin.id });
+    });
+
+    it('unknown, already deleted or older than 30 days = not_found (for admins too)', async () => {
+      const [id] = await seed(ann.id, 1);
+      const [old] = await seed(ann.id, 1, new Date(chatCutoff(T).getTime() - 1), 'old');
+      for (const actor of [{ id: ann.id, isAdmin: false }, { id: admin.id, isAdmin: true }]) {
+        expect(await deleteMessage(actor, 999_999, T)).toEqual({ ok: false, error: 'not_found' });
+        expect(await deleteMessage(actor, old, T)).toEqual({ ok: false, error: 'not_found' });
+      }
+      expect(await row(old)).toMatchObject({ body: 'old1', deletedAt: null });
+      expect(await deleteMessage({ id: ann.id, isAdmin: false }, id, plus(1000))).toEqual({ ok: true });
+      expect(await deleteMessage({ id: ann.id, isAdmin: false }, id, plus(2000))).toEqual({ ok: false, error: 'not_found' });
+      expect(await deleteMessage({ id: bob.id, isAdmin: false }, id, plus(2000))).toEqual({ ok: false, error: 'not_found' });
+      // The first deletion is kept.
+      expect(await row(id)).toMatchObject({ deletedAt: plus(1000), deletedById: ann.id });
+    });
+
+    it('the DB CHECK refuses a deleted row with a body and a live row without one', async () => {
+      const db = await getDb();
+      await expect(db.insert(chatMessages).values({ userId: ann.id, body: 'x', createdAt: T, deletedAt: T })).rejects.toThrow();
+      await expect(db.insert(chatMessages).values({ userId: ann.id, body: null, createdAt: T })).rejects.toThrow();
+      const [id] = await seed(ann.id, 1);
+      await expect(db.update(chatMessages).set({ deletedAt: T }).where(eq(chatMessages.id, id))).rejects.toThrow();
+      await expect(db.update(chatMessages).set({ body: null }).where(eq(chatMessages.id, id))).rejects.toThrow();
+    });
+
+    it('deleting the deleting admin keeps the tombstone (deleted_by_id set to NULL)', async () => {
+      const [id] = await seed(bob.id, 1);
+      await deleteMessage({ id: admin.id, isAdmin: true }, id, plus(1000));
+      await (await getDb()).delete(users).where(eq(users.id, admin.id));
+      expect(await row(id)).toMatchObject({ deletedById: null, body: null, deletedAt: plus(1000) });
+    });
+
+    it('every read and the unread count skip deleted messages', async () => {
+      const ids = await seed(bob.id, 4);
+      const at = plus(DAY);
+      await deleteMessage({ id: bob.id, isAdmin: false }, ids[1], at);
+      await deleteMessage({ id: bob.id, isAdmin: false }, ids[3], at);
+      const live = [ids[0], ids[2]];
+      expect((await listRecent(at)).messages.map((m) => m.id)).toEqual(live);
+      expect((await listRecent(at, 1)).messages.map((m) => m.id)).toEqual([ids[2]]);
+      expect(await listRecent(at, 2)).toMatchObject({ hasMore: false });
+      expect((await listBefore(ids[3], at)).messages.map((m) => m.id)).toEqual(live);
+      expect((await listAfter(0, at)).map((m) => m.id)).toEqual(live);
+      expect(await listAfter(ids[2], at)).toEqual([]);
+      expect(await unreadCount(ann.id, at)).toBe(2);
+    });
+
+    it('listDeletedIds: deleted ids >= fromId within the window, most recently deleted first', async () => {
+      const [old] = await seed(ann.id, 1, new Date(chatCutoff(T).getTime() - 1000), 'old');
+      const ids = await seed(ann.id, 5, plus(-60_000));
+      // A tombstone that aged out is not reported (the prune removes it).
+      await (await getDb()).update(chatMessages).set({ deletedAt: plus(-DAY), body: null }).where(eq(chatMessages.id, old));
+      expect(await listDeletedIds(1, T)).toEqual([]);
+      await deleteMessage({ id: ann.id, isAdmin: false }, ids[3], plus(1000));
+      await deleteMessage({ id: ann.id, isAdmin: false }, ids[0], plus(2000));
+      await deleteMessage({ id: ann.id, isAdmin: false }, ids[2], plus(3000));
+      expect(await listDeletedIds(1, plus(3000))).toEqual([ids[2], ids[0], ids[3]]);
+      expect(await listDeletedIds(ids[0], plus(3000))).toEqual([ids[2], ids[0], ids[3]]);
+      expect(await listDeletedIds(ids[1], plus(3000))).toEqual([ids[2], ids[3]]);
+      expect(await listDeletedIds(ids[4], plus(3000))).toEqual([]);
+      expect(old).toBeLessThan(ids[0]);
+    });
+
+    it(`listDeletedIds returns at most ${CHAT_DELETED_CAP}`, async () => {
+      const ids = await seed(ann.id, CHAT_DELETED_CAP + 3);
+      const db = await getDb();
+      await db.update(chatMessages).set({ deletedAt: plus(DAY), body: null });
+      const got = await listDeletedIds(1, plus(DAY));
+      expect(got).toHaveLength(CHAT_DELETED_CAP);
+      expect(got[0]).toBe(ids[ids.length - 1]); // same deleted_at: newest id first
+    });
+
+    it('deleted messages still count toward the rate limit', async () => {
+      for (let i = 0; i < 10; i++) {
+        const res = await postMessage(ann.id, `m${i}`, plus(i * 1000));
+        if (!res.ok) throw new Error(`msg ${i}`);
+        expect(await deleteMessage({ id: ann.id, isAdmin: false }, res.message.id, plus(i * 1000 + 500))).toEqual({ ok: true });
+      }
+      expect(await postMessage(ann.id, 'eleventh', plus(10_000))).toEqual({ ok: false, error: 'rate_limited' });
+      expect((await postMessage(ann.id, 'back', plus(60_000))).ok).toBe(true);
+    });
+
+    it('pruneChat removes old tombstones like any other row', async () => {
+      const [id] = await seed(ann.id, 1, new Date(chatCutoff(T).getTime() - 1000));
+      await (await getDb()).update(chatMessages).set({ deletedAt: plus(-DAY), body: null }).where(eq(chatMessages.id, id));
+      expect(await pruneChat(T)).toBe(1);
     });
   });
 

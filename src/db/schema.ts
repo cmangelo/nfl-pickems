@@ -133,7 +133,11 @@ export const syncState = pgTable('sync_state', {
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
 });
 
-/** League-wide chat room. Messages older than 30 days are never read and are pruned nightly (chat.ts). */
+/**
+ * League-wide chat room. Messages older than 30 days are never read and are pruned nightly (chat.ts).
+ * A deleted message is a tombstone (`deleted_at` set, `body` NULL) so open clients learn about the deletion;
+ * reads skip it and the prune removes it like any other row.
+ */
 export const chatMessages = pgTable(
   'chat_messages',
   {
@@ -141,12 +145,18 @@ export const chatMessages = pgTable(
     userId: integer('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    body: text('body').notNull(),
+    /** NULL once deleted (the text is really gone). */
+    body: text('body'),
     /** Set by the app from now() so test time control works. */
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deletedById: integer('deleted_by_id').references(() => users.id, { onDelete: 'set null' }),
   },
   (t) => [
     index('chat_messages_created_at_idx').on(t.createdAt),
-    check('chat_messages_body_length', sql`char_length(${t.body}) BETWEEN 1 AND 500`),
+    check(
+      'chat_messages_body_length',
+      sql`(${t.deletedAt} IS NULL AND ${t.body} IS NOT NULL AND char_length(${t.body}) BETWEEN 1 AND 500) OR (${t.deletedAt} IS NOT NULL AND ${t.body} IS NULL)`,
+    ),
   ],
 );
